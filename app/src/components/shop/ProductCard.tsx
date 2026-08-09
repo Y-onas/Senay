@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import type { Product } from '@/types'
 import { useCart } from '@/hooks/useCart'
-import { formatPrice, unitLabel } from '@/lib/format'
+import { formatPrice, unitLabel, unitSuffix } from '@/lib/format'
 import FoodVisual from '@/components/common/FoodVisual'
 import QuantityStepper from '@/components/common/QuantityStepper'
 
@@ -55,7 +55,7 @@ export default function ProductCard({ product }: { product: Product }) {
             min={min}
             step={product.step ?? 1}
             size="sm"
-            suffix={product.unit === 'liter' ? 'L' : product.unit === 'kg' ? 'kg' : undefined}
+            suffix={unitSuffix(product.unit)}
             onChange={setQuantity}
           />
           <button

@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
@@ -173,6 +175,8 @@ function CarouselPrevious({
   className,
   variant = "outline",
   size = "icon",
+  onClick,
+  disabled,
   ...props
 }: React.ComponentProps<typeof Button>) {
   const { orientation, scrollPrev, canScrollPrev } = useCarousel()
@@ -189,9 +193,12 @@ function CarouselPrevious({
           : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
         className
       )}
-      disabled={!canScrollPrev}
-      onClick={scrollPrev}
       {...props}
+      disabled={disabled || !canScrollPrev}
+      onClick={(event) => {
+        onClick?.(event)
+        if (!event.defaultPrevented) scrollPrev()
+      }}
     >
       <ArrowLeft />
       <span className="sr-only">Previous slide</span>
@@ -203,6 +210,8 @@ function CarouselNext({
   className,
   variant = "outline",
   size = "icon",
+  onClick,
+  disabled,
   ...props
 }: React.ComponentProps<typeof Button>) {
   const { orientation, scrollNext, canScrollNext } = useCarousel()
@@ -219,9 +228,12 @@ function CarouselNext({
           : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
         className
       )}
-      disabled={!canScrollNext}
-      onClick={scrollNext}
       {...props}
+      disabled={disabled || !canScrollNext}
+      onClick={(event) => {
+        onClick?.(event)
+        if (!event.defaultPrevented) scrollNext()
+      }}
     >
       <ArrowRight />
       <span className="sr-only">Next slide</span>

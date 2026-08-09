@@ -26,7 +26,8 @@ export default function QuantityStepper({
 }: QuantityStepperProps) {
   const round = (n: number) => Math.round(n * 100) / 100
   const dec = () => onChange(round(Math.max(min, value - step)))
-  const inc = () => onChange(round(max ? Math.min(max, value + step) : value + step))
+  const inc = () =>
+    onChange(round(max !== undefined ? Math.min(max, value + step) : value + step))
 
   const btn =
     size === 'sm'

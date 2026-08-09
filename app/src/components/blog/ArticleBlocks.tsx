@@ -1,7 +1,6 @@
-import { useCallback, useState, type SyntheticEvent } from 'react'
+import { useCallback, useEffect, useState, type SyntheticEvent } from 'react'
 import { Link } from 'react-router'
-import { ArrowUpRight, Quote } from 'lucide-react'
-import type { BlogBlock } from '@/types/blogBlocks'
+import { ArrowUpRight, ImageOff, Quote } from 'lucide-react'import type { BlogBlock } from '@/types/blogBlocks'
 import { displayLocalized } from '@/types/blogBlocks'
 import { detectOrientation, type ImageOrientation } from '@/lib/imageOrientation'
 import { useLanguage } from '@/hooks/useLanguage'
@@ -19,13 +18,24 @@ function ArticleImage({
 }) {
   const [orientation, setOrientation] = useState<ImageOrientation>('landscape')
   const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setLoaded(false)
+    setFailed(false)
+  }, [url])
 
   const handleLoad = useCallback((event: SyntheticEvent<HTMLImageElement>) => {
     const img = event.currentTarget
     setOrientation(detectOrientation(img.naturalWidth, img.naturalHeight))
     setLoaded(true)
+    setFailed(false)
   }, [])
 
+  const handleError = useCallback(() => {
+    setFailed(true)
+    setLoaded(false)
+  }, [])
   const isPortrait = orientation === 'portrait'
   const isSquare = orientation === 'square'
 
@@ -54,26 +64,39 @@ function ArticleImage({
           : 'max-h-[min(52vh,460px)] object-cover object-center',
   ].join(' ')
 
+  const placeholderClass = isPortrait
+    ? 'min-h-[320px] sm:min-h-[420px]'
+    : 'aspect-[16/10] min-h-[220px]'
+
   return (
     <figure className={wrapperClass}>
       <div className={`relative ${frameClass}`}>
-        {!loaded ? (
+        {failed ? (
           <div
-            className={`animate-pulse bg-burgundy/5 ${
-              isPortrait ? 'min-h-[320px] sm:min-h-[420px]' : 'aspect-[16/10] min-h-[220px]'
-            }`}
-          />
-        ) : null}
-        <img
-          src={url}
-          alt={caption || ''}
-          className={`${imageClass}${loaded ? '' : ' absolute inset-0 h-full w-full'}`}
-          loading="lazy"
-          decoding="async"
-          onLoad={handleLoad}
-        />
-      </div>
-      {caption ? (
+            className={`flex flex-col items-center justify-center gap-2 bg-burgundy/5 px-6 text-center text-gray-500 ${placeholderClass}`}
+            role="img"
+            aria-label={caption ? `Failed to load image: ${caption}` : 'Image unavailable'}
+          >
+            <ImageOff className="h-8 w-8 text-burgundy/40" aria-hidden />
+            <span className="text-sm">Image could not be loaded</span>
+          </div>
+        ) : (
+          <>
+            {!loaded ? (
+              <div className={`animate-pulse bg-burgundy/5 ${placeholderClass}`} />
+            ) : null}
+            <img
+              src={url}
+              alt={caption || ''}
+              className={`${imageClass}${loaded ? '' : ' absolute inset-0 h-full w-full'}`}
+              loading="lazy"
+              decoding="async"
+              onLoad={handleLoad}
+              onError={handleError}
+            />
+          </>
+        )}
+      </div>      {caption ? (
         <figcaption className="mt-4 px-1 text-center text-sm leading-relaxed text-gray-500 sm:text-[0.95rem]">
           {caption}
         </figcaption>

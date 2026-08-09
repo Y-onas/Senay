@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Coffee, Flame, UtensilsCrossed, Wheat } from 'lucide-react'
 import type { CategorySlug } from '@/types'
 import { cn } from '@/lib/utils'
+import { resolveImageSrc } from '@/lib/image-url'
 
 interface FoodVisualProps {
   /** When provided, a real image is rendered. Otherwise a branded placeholder. */
@@ -55,18 +57,27 @@ export default function FoodVisual({
   className,
   imgClassName,
 }: FoodVisualProps) {
-  if (image) {
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setFailed(false)
+  }, [image])
+
+  const resolvedCategory = resolveCategory(category)
+  const { gradient, Icon } = categoryStyles[resolvedCategory]
+
+  if (image && !failed) {
     return (
       <img
-        src={image}
+        src={resolveImageSrc(image)}
         alt={name}
         loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
         className={cn('h-full w-full object-cover', imgClassName, className)}
       />
     )
   }
-
-  const { gradient, Icon } = categoryStyles[resolveCategory(category)]
 
   return (
     <div

@@ -7,6 +7,26 @@ import QuantityStepper from '@/components/common/QuantityStepper'
 import { TextField, TextAreaField } from '@/components/common/FormField'
 import { formatPrice } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import type { ServiceSlug } from '@/services/requestService'
+
+export type ShopOrderKind = 'baltina' | 'drinks'
+
+const SERVICE_SLUG_BY_KIND: Record<ShopOrderKind, ServiceSlug> = {
+  baltina: 'baltina',
+  drinks: 'drinks',
+}
+
+function shopKindToServiceSlug(kind: string): ServiceSlug {
+  const serviceSlug = SERVICE_SLUG_BY_KIND[kind as ShopOrderKind]
+  if (!serviceSlug) {
+    throw new Error(`Unknown shop order kind: ${kind}`)
+  }
+  return serviceSlug
+}
+
+function localIsoDate(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
 
 export interface ShopProduct {
   id: string
@@ -26,9 +46,7 @@ export interface ShopCategory {
 }
 
 interface ShopOrderPageProps {
-  /** Confirmation `kind` and order-reference prefix, e.g. 'baltina' / 'BAL'. */
-  kind: string
-  refPrefix: string
+  kind: ShopOrderKind
   hero: {
     eyebrow: string
     title: string
@@ -46,7 +64,6 @@ type Selection = Record<string, number>
 
 export default function ShopOrderPage({
   kind,
-  refPrefix: _refPrefix,
   hero,
   products,
   categories,
@@ -70,6 +87,7 @@ export default function ShopOrderPage({
   const [submitting, setSubmitting] = useState(false)
 
   const orderAnchorId = `${kind}-order`
+  const minDate = localIsoDate()
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -86,19 +104,17 @@ export default function ShopOrderPage({
   const lines = useMemo(() => {
     return Object.entries(selection)
       .filter(([, qty]) => qty > 0)
-      .map(([id, qty]) => {
-        const product = products.find((p) => p.id === id)!
-        return {
-          product,
-          qty,
-          lineTotal: product.price * qty,
-        }
+      .flatMap(([id, qty]) => {
+        const product = products.find((p) => p.id === id)
+        if (!product) return []
+        return [{ product, qty, lineTotal: product.price * qty }]
       })
   }, [products, selection])
 
   const grandTotal = lines.reduce((sum, l) => sum + l.lineTotal, 0)
   const itemCount = lines.reduce((sum, l) => sum + l.qty, 0)
-  const mobileUnit = lines[0]?.product.unit ?? ''
+  const units = new Set(lines.map((l) => l.product.unit))
+  const mobileUnit = units.size === 1 ? (lines[0]?.product.unit ?? '') : 'item(s)'
 
   const setQty = (product: ShopProduct, qty: number) => {
     setSelection((prev) => {
@@ -109,21 +125,13 @@ export default function ShopOrderPage({
     })
   }
 
-  const toggleProduct = (product: ShopProduct) => {
-    setSelection((prev) => {
-      const next = { ...prev }
-      if (next[product.id]) delete next[product.id]
-      else next[product.id] = product.minQty
-      return next
-    })
-  }
-
   const validate = () => {
     const next: Record<string, string> = {}
     if (!lines.length) next.products = 'Select at least one product.'
     if (!name.trim()) next.name = 'Your name is required.'
     if (!phone.trim()) next.phone = 'Phone number is required.'
     if (!date) next.date = 'Choose a preferred date.'
+    else if (date < minDate) next.date = 'Choose today or a future date.'
     if (deliveryMethod === 'delivery' && !location.trim()) {
       next.location = 'Enter a delivery address.'
     }
@@ -141,43 +149,45 @@ export default function ShopOrderPage({
     }
 
     setSubmitting(true)
+    setErrors((prev) => {
+      const next = { ...prev }
+      delete next.submit
+      return next
+    })
     try {
       const { submitServiceRequest, toApiDelivery } = await import(
         '@/services/requestService'
       )
-      const serviceSlug = kind === 'drinks' ? 'drinks' : 'baltina'
+      const serviceSlug = shopKindToServiceSlug(kind)
+      const resolvedLocation =
+        deliveryMethod === 'delivery' ? location.trim() : 'Pickup at Senay Tela'
+      const orderDetails = {
+        items: lines.map((l) => ({
+          id: l.product.id,
+          name: l.product.name,
+          qty: l.qty,
+          unit: l.product.unit,
+          unitPrice: l.product.price,
+          lineTotal: l.lineTotal,
+        })),
+        grandTotal,
+        deliveryMethod,
+        date,
+        location: resolvedLocation,
+        notes: notes.trim() || undefined,
+        contact: { name: name.trim(), phone: phone.trim() },
+      }
       const created = await submitServiceRequest({
         serviceSlug,
         customerName: name.trim(),
         phone: phone.trim(),
         deliveryMethod: toApiDelivery(deliveryMethod),
-        location:
-          deliveryMethod === 'delivery'
-            ? location.trim()
-            : 'Pickup at Senay Tela',
+        location: resolvedLocation,
         preferredDate: date,
         notes: notes.trim() || undefined,
         packageSummary: lines.map((l) => `${l.product.name} × ${l.qty}`).join(', '),
         totalAmount: grandTotal,
-        payload: {
-          items: lines.map((l) => ({
-            id: l.product.id,
-            name: l.product.name,
-            qty: l.qty,
-            unit: l.product.unit,
-            unitPrice: l.product.price,
-            lineTotal: l.lineTotal,
-          })),
-          grandTotal,
-          deliveryMethod,
-          date,
-          location:
-            deliveryMethod === 'delivery'
-              ? location.trim()
-              : 'Pickup at Senay Tela',
-          notes: notes.trim() || undefined,
-          contact: { name: name.trim(), phone: phone.trim() },
-        },
+        payload: orderDetails,
       })
 
       navigate('/confirmation', {
@@ -185,30 +195,13 @@ export default function ShopOrderPage({
           kind,
           request: {
             reference: created.reference,
-            items: lines.map((l) => ({
-              id: l.product.id,
-              name: l.product.name,
-              qty: l.qty,
-              unit: l.product.unit,
-              unitPrice: l.product.price,
-              lineTotal: l.lineTotal,
-            })),
-            grandTotal,
-            deliveryMethod,
-            date,
-            location:
-              deliveryMethod === 'delivery'
-                ? location.trim()
-                : 'Pickup at Senay Tela',
-            notes: notes.trim() || undefined,
-            contact: { name: name.trim(), phone: phone.trim() },
+            ...orderDetails,
           },
         },
       })
-    } catch (err) {
+    } catch {
       setErrors({
-        products:
-          err instanceof Error ? err.message : 'Could not submit request.',
+        submit: 'Could not submit your order. Please try again.',
       })
     } finally {
       setSubmitting(false)
@@ -238,6 +231,7 @@ export default function ShopOrderPage({
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2C1A14]/40" />
                 <input
                   type="search"
+                  aria-label={searchPlaceholder}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={searchPlaceholder}
@@ -250,6 +244,7 @@ export default function ShopOrderPage({
                     <button
                       key={c.value}
                       type="button"
+                      aria-pressed={category === c.value}
                       onClick={() => setCategory(c.value)}
                       className={cn(
                         'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
@@ -274,7 +269,7 @@ export default function ShopOrderPage({
                   Choose your products
                 </h2>
                 <p className="text-sm text-[#2C1A14]/55">
-                  Click a card to add it — click again to remove. You can also use the Add and Remove buttons.
+                  Use the Add and Remove buttons to build your order.
                 </p>
               </div>
             </div>
@@ -291,18 +286,8 @@ export default function ShopOrderPage({
                 return (
                   <article
                     key={product.id}
-                    role="button"
-                    tabIndex={0}
-                    aria-pressed={selected}
-                    onClick={() => toggleProduct(product)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        toggleProduct(product)
-                      }
-                    }}
                     className={cn(
-                      'group flex cursor-pointer flex-col overflow-hidden rounded-3xl border bg-white shadow-sm transition-all duration-300',
+                      'group flex flex-col overflow-hidden rounded-3xl border bg-white shadow-sm transition-all duration-300',
                       selected
                         ? 'border-[#E8B838] ring-2 ring-[#E8B838]/35 shadow-md'
                         : 'border-[#2C1A14]/10 hover:-translate-y-1 hover:border-[#E8B838]/50 hover:shadow-lg',
@@ -341,29 +326,21 @@ export default function ShopOrderPage({
                         </div>
 
                         {selected && (
-                          <div
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => e.stopPropagation()}
-                          >
-                            <QuantityStepper
-                              value={qty}
-                              min={product.minQty}
-                              step={product.step}
-                              size="sm"
-                              suffix={product.unit}
-                              onChange={(v) => setQty(product, v)}
-                            />
-                          </div>
+                          <QuantityStepper
+                            value={qty}
+                            min={product.minQty}
+                            step={product.step}
+                            size="sm"
+                            suffix={product.unit}
+                            onChange={(v) => setQty(product, v)}
+                          />
                         )}
                       </div>
 
                       {selected ? (
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setQty(product, 0)
-                          }}
+                          onClick={() => setQty(product, 0)}
                           className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-[#931F1D]/30 bg-white py-2.5 text-xs font-semibold text-[#931F1D] transition-colors hover:bg-[#931F1D] hover:text-white"
                         >
                           <X className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -372,10 +349,7 @@ export default function ShopOrderPage({
                       ) : (
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setQty(product, product.minQty)
-                          }}
+                          onClick={() => setQty(product, product.minQty)}
                           className="mt-3 w-full rounded-full bg-[#2C1A14] py-2.5 text-xs font-semibold text-[#FAF5EE] transition-colors hover:bg-[#E8B838] hover:text-[#2C1A14]"
                         >
                           Add
@@ -481,6 +455,7 @@ export default function ShopOrderPage({
                   name="date"
                   type="date"
                   required
+                  min={minDate}
                   value={date}
                   error={errors.date}
                   onChange={(e) => setDate(e.target.value)}
@@ -520,6 +495,11 @@ export default function ShopOrderPage({
                   'Submit Order'
                 )}
               </button>
+              {errors.submit ? (
+                <p className="mt-3 text-sm text-destructive" role="alert">
+                  {errors.submit}
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -550,7 +530,7 @@ export default function ShopOrderPage({
         </form>
 
         {/* Mobile floating total */}
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#2C1A14]/15 bg-[#2C1A14] p-4 lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#2C1A14]/15 bg-[#2C1A14] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:hidden">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[#E8B838]">

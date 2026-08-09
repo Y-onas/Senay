@@ -1,4 +1,4 @@
-import { useCallback, useState, type SyntheticEvent } from 'react'
+import { useCallback, useEffect, useState, type SyntheticEvent } from 'react'
 import FoodVisual from '@/components/common/FoodVisual'
 import { detectOrientation, type ImageOrientation } from '@/lib/imageOrientation'
 import { cn } from '@/lib/utils'
@@ -16,15 +16,26 @@ export default function BlogCardImage({
 }) {
   const [orientation, setOrientation] = useState<ImageOrientation>('landscape')
   const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setLoaded(false)
+    setFailed(false)
+  }, [image])
 
   const handleLoad = useCallback((event: SyntheticEvent<HTMLImageElement>) => {
     const img = event.currentTarget
     setOrientation(detectOrientation(img.naturalWidth, img.naturalHeight))
     setLoaded(true)
+    setFailed(false)
   }, [])
 
-  if (!image) {
-    return (
+  const handleError = useCallback(() => {
+    setFailed(true)
+    setLoaded(false)
+  }, [])
+
+  if (!image || failed) {    return (
       <div className={cn('h-full w-full', className)}>
         <FoodVisual name={alt} category={fallbackCategory} />
       </div>
@@ -47,8 +58,8 @@ export default function BlogCardImage({
         loading="lazy"
         decoding="async"
         onLoad={handleLoad}
-        className={cn(
-          'h-full w-full transition-transform duration-500 group-hover:scale-[1.03]',
+        onError={handleError}
+        className={cn(          'h-full w-full transition-transform duration-500 group-hover:scale-[1.03]',
           loaded ? 'opacity-100' : 'opacity-0',
           isPortrait ? 'object-contain object-center' : 'object-cover object-center',
         )}

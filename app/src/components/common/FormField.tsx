@@ -59,6 +59,7 @@ export function TextField({
       <input
         id={name}
         name={name}
+        required={required}
         className={cn(baseInput, error && 'border-destructive focus:border-destructive')}
         {...props}
       />
@@ -90,6 +91,7 @@ export function TextAreaField({
       <textarea
         id={name}
         name={name}
+        required={required}
         rows={4}
         className={cn(baseInput, 'resize-none', error && 'border-destructive focus:border-destructive')}
         {...props}

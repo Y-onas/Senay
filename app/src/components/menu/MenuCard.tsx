@@ -17,7 +17,7 @@ export default function MenuCard({ item }: { item: MenuItem }) {
         <div className="absolute left-4 top-4 flex gap-2">
           {item.vegetarian && (
             <span className="inline-flex items-center gap-1 rounded-full bg-green-brand px-2.5 py-1 text-xs font-semibold text-white">
-              <Leaf className="h-3 w-3" /> Vegan
+              <Leaf className="h-3 w-3" /> Vegetarian
             </span>
           )}
           {item.spicy && (

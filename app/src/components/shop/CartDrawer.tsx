@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router'
 import { ShoppingBag, Trash2, X } from 'lucide-react'
@@ -17,11 +18,29 @@ export default function CartDrawer() {
     removeItem,
   } = useCart()
 
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeCart()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeButtonRef.current?.focus()
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isOpen, closeCart])
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
           <motion.div
+            aria-hidden="true"
             className="fixed inset-0 z-[60] bg-black/50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -29,6 +48,9 @@ export default function CartDrawer() {
             onClick={closeCart}
           />
           <motion.aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Your Cart"
             className="fixed inset-y-0 right-0 z-[70] flex w-full max-w-md flex-col bg-cream shadow-2xl"
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -43,6 +65,7 @@ export default function CartDrawer() {
                 </h2>
               </div>
               <button
+                ref={closeButtonRef}
                 onClick={closeCart}
                 aria-label="Close cart"
                 className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-burgundy/10 hover:text-burgundy"

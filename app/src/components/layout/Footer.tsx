@@ -6,6 +6,7 @@ import Logo from './Logo'
 import { footerDefaults, getFooter, type FooterContent } from '@/services/footerService'
 import { useContactContent } from '@/hooks/useContactContent'
 import { useEnabledServices } from '@/hooks/useEnabledServices'
+import { useLanguage } from '@/hooks/useLanguage'
 
 function filterFooterContent(footer: FooterContent, isHrefEnabled: (href: string) => boolean): FooterContent {
   return {
@@ -22,6 +23,7 @@ function filterFooterContent(footer: FooterContent, isHrefEnabled: (href: string
 }
 
 export default function Footer() {
+  const { t } = useLanguage()
   const [footer, setFooter] = useState<FooterContent>(footerDefaults)
   const contact = useContactContent()
   const { isHrefEnabled } = useEnabledServices()
@@ -81,7 +83,7 @@ export default function Footer() {
               to="/contact"
               className="group inline-flex items-center gap-2 font-display text-lg font-bold uppercase tracking-wide transition-colors hover:text-yellow-brand"
             >
-              Visit Us
+              {t('footerVisitUs')}
               <ArrowUpRight className="h-4 w-4 opacity-70 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </Link>
             <ul className="mt-4 space-y-3 text-sm text-white/70">
@@ -123,7 +125,7 @@ export default function Footer() {
               to="/contact"
               className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-yellow-brand transition-colors hover:text-white"
             >
-              Contact us
+              {t('footerContactUs')}
               <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -131,7 +133,7 @@ export default function Footer() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 sm:flex-row">
           <p className="text-sm text-white/50">
-            &copy; {new Date().getFullYear()} {restaurant.name}. All rights reserved.
+            &copy; {new Date().getFullYear()} {restaurant.name}. {t('footerAllRightsReserved')}
           </p>
           <p className="text-sm text-white/50">{visibleFooter.bottom.creditText}</p>
         </div>

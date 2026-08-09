@@ -9,7 +9,7 @@ export default function Logo({ light = false }: { light?: boolean }) {
         {/* mix-blend-multiply drops the logo's white background onto the white chip */}
         <img
           src="/images/senay-logo.png"
-          alt="Senay Tela Restaurant and Catering"
+          alt=""
           className="h-full w-full object-contain mix-blend-multiply"
         />
       </span>

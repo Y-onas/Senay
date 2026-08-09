@@ -17,6 +17,7 @@ export default function HomeSectionGate({
   const { enabled } = useHomeSection(sectionKey)
 
   useEffect(() => {
+    if (!enabled) return
     if (IMMEDIATE_SECTIONS.has(sectionKey)) {
       ctx?.ensureLoaded()
       return
@@ -32,12 +33,12 @@ export default function HomeSectionGate({
         ctx?.ensureLoaded()
         observer.disconnect()
       },
-      { rootMargin: '320px 0px' },
+      { rootMargin: '120px 0px' },
     )
 
     observer.observe(node)
     return () => observer.disconnect()
-  }, [sectionKey, ctx])
+  }, [sectionKey, ctx, enabled])
 
   if (!visible) {
     return <div ref={containerRef} className="min-h-px" aria-hidden />
