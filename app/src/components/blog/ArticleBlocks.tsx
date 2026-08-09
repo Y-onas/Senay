@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type SyntheticEvent } from 'react'
 import { Link } from 'react-router'
-import { ArrowUpRight, ImageOff, Quote } from 'lucide-react'import type { BlogBlock } from '@/types/blogBlocks'
+import { ArrowUpRight, ImageOff, Quote } from 'lucide-react'
+import type { BlogBlock } from '@/types/blogBlocks'
 import { displayLocalized } from '@/types/blogBlocks'
 import { detectOrientation, type ImageOrientation } from '@/lib/imageOrientation'
 import { useLanguage } from '@/hooks/useLanguage'
