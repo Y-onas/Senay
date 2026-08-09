@@ -1,0 +1,41 @@
+{
+  "name": "senay-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "bot": "tsx watch src/bot/index.ts",
+    "bot:start": "tsx src/bot/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed-bot": "tsx prisma/seed-bot.ts",
+    "db:backfill-i18n": "tsx scripts/backfill-i18n.ts",
+    "media:optimize": "tsx scripts/optimize-existing-media.ts",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@clerk/backend": "^3.16.1",
+    "@hono/node-server": "^2.0.12",
+    "@prisma/client": "^6.11.1",
+    "bcryptjs": "^3.0.2",
+    "cloudinary": "^2.10.0",
+    "dotenv": "^16.6.1",
+    "grammy": "^1.45.1",
+    "hono": "^4.8.5",
+    "jose": "^6.2.4",
+    "prisma": "^6.11.1",
+    "sharp": "^0.34.5",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.16.5",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}

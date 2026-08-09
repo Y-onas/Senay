@@ -1,0 +1,693 @@
+// Prisma schema for Senay Tela — unified CMS backend.
+// Clients: public website (/app) and admin CMS (/admin).
+
+// Use binary targets for Node.js compatibility
+// generator client {
+//   provider = "prisma-client-js"
+//   binaryTargets = ["native", "debian-openssl-3.0.x"]
+// }
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum RequestStatus {
+  NEW
+  CONFIRMED
+  IN_PROGRESS
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum FollowUpStatus {
+  NONE
+  SATISFIED
+  WAITING_FEEDBACK
+  FOLLOW_UP_REQUIRED
+  ISSUE_REPORTED
+}
+
+enum RequestSource {
+  WEBSITE
+  TELEGRAM
+}
+
+enum DeliveryMethod {
+  PICKUP
+  DELIVERY
+}
+
+enum CatalogItemKind {
+  PRODUCT
+  PACKAGE
+  CONFIG
+}
+
+enum AdminStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum ContentLanguage {
+  EN
+  AM
+}
+
+enum NotificationKind {
+  REQUEST
+  STATUS
+  ADMIN
+}
+
+enum NavigationLocation {
+  PRIMARY
+  FOOTER
+  MOBILE
+}
+
+enum CategoryType {
+  PRODUCT
+  MENU
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// ─── Media Library ─────────────────────────────────────────────────────────────
+
+model Media {
+  id           String    @id @default(cuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int // bytes
+  url          String // public URL relative to server
+  type         MediaType @default(IMAGE)
+  alt          String?
+  caption      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  catalogItems  CatalogItem[]
+  blogPosts     BlogPost[]
+  galleryImages GalleryImage[]
+  testimonials  Testimonial[]
+  categories    Category[]
+  menuItems     MenuItem[]
+  pages         Page[]         @relation("PageCoverMedia")
+  pageBlocks    PageBlock[]    @relation("PageBlockMedia")
+  homeSections  HomeSection[]  @relation("HomeSectionMedia")
+  announcements Announcement[]
+
+  @@index([type])
+  @@index([createdAt])
+  @@map("media")
+}
+
+// ─── Services & catalog ───────────────────────────────────────────────────────
+
+model Service {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  nameI18n    Json?
+  description String
+  descriptionI18n Json?
+  image       String?
+  /// Website path to open from Telegram, e.g. "/catering". Managed in the CMS.
+  webAppPath  String?
+  enabled     Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  catalogItems CatalogItem[]
+  requests     ServiceRequest[]
+
+  @@map("services")
+}
+
+model CatalogItem {
+  id          String          @id @default(cuid())
+  serviceId   String
+  kind        CatalogItemKind
+  slug        String
+  name        String
+  nameI18n    Json?
+  description String          @default("")
+  descriptionI18n Json?
+  price       Decimal?        @db.Decimal(12, 2)
+  image       String? // legacy path; prefer mediaId
+  mediaId     String? // new media library reference
+  images      String[]        @default([])
+  available   Boolean         @default(true)
+  sortOrder   Int             @default(0)
+  metadata    Json            @default("{}")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  media   Media?  @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+
+  @@unique([serviceId, slug])
+  @@index([serviceId, available])
+  @@map("catalog_items")
+}
+
+// ─── Service requests ─────────────────────────────────────────────────────────
+
+model ServiceRequest {
+  id        String        @id @default(cuid())
+  reference String        @unique
+  serviceId String
+  status    RequestStatus @default(NEW)
+  source    RequestSource @default(WEBSITE)
+
+  customerName String
+  phone        String
+  email        String?
+  telegram     String?
+  telegramUserId String?
+
+  deliveryMethod DeliveryMethod?
+  location       String?
+  preferredDate  DateTime?       @db.Date
+  preferredTime  String?
+  notes          String?
+
+  guests         Int?
+  packageSummary String?
+  totalAmount    Decimal? @db.Decimal(12, 2)
+  currency       String   @default("ETB")
+  payload        Json     @default("{}")
+
+  followUpStatus FollowUpStatus @default(NONE)
+  followUpNote   String?
+
+  assignedToId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  service        Service              @relation(fields: [serviceId], references: [id])
+  assignedTo     Admin?               @relation("AssignedRequests", fields: [assignedToId], references: [id], onDelete: SetNull)
+  telegramUser   TelegramUser?        @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
+  history        RequestStatusEvent[]
+
+  @@index([status, createdAt])
+  @@index([serviceId])
+  @@index([phone])
+  @@index([telegramUserId])
+  @@map("service_requests")
+}
+
+model RequestStatusEvent {
+  id        String        @id @default(cuid())
+  requestId String
+  status    RequestStatus
+  note      String?
+  byAdminId String?
+  createdAt DateTime      @default(now())
+
+  request ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  byAdmin Admin?         @relation(fields: [byAdminId], references: [id], onDelete: SetNull)
+
+  @@index([requestId, createdAt])
+  @@map("request_status_events")
+}
+
+// ─── Admins, roles, permissions ───────────────────────────────────────────────
+
+model Permission {
+  id          String @id @default(cuid())
+  code        String @unique
+  description String @default("")
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String   @default("")
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  admins      Admin[]
+
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Admin {
+  id             String      @id @default(cuid())
+  name           String
+  email          String      @unique
+  passwordHash   String
+  roleId         String
+  status         AdminStatus @default(ACTIVE)
+  avatar         String?
+  telegramChatId String?
+  lastLoginAt    DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  role             Role                 @relation(fields: [roleId], references: [id])
+  assignedRequests ServiceRequest[]     @relation("AssignedRequests")
+  statusEvents     RequestStatusEvent[]
+
+  @@index([status])
+  @@map("admins")
+}
+
+// ─── Content ───────────────────────────────────────────────────────────────────
+
+model Faq {
+  id        String          @id @default(cuid())
+  question  String
+  questionI18n Json?
+  answer    String
+  answerI18n Json?
+  language  ContentLanguage @default(EN)
+  sortOrder Int             @default(0)
+  published Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@map("faqs")
+}
+
+model GalleryImage {
+  id        String   @id @default(cuid())
+  url       String
+  name      String?
+  nameI18n  Json?
+  category  String
+  caption   String?
+  captionI18n Json?
+  tall      Boolean  @default(false)
+  sortOrder Int      @default(0)
+  published Boolean  @default(true)
+  mediaId   String? // new media library reference
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  media Media? @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+
+  @@map("gallery_images")
+}
+
+model BlogPost {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  titleI18n       Json?
+  excerpt         String
+  excerptI18n     Json?
+  content         String[]
+  blocks          Json     @default("[]")
+  image           String? // featured / hero image
+  mediaId         String? // new media library reference
+  author          String
+  authorI18n      Json?
+  publishedAt     DateTime
+  readTime        String
+  readTimeI18n    Json?
+  tags            String[] @default([])
+  seoTitle        String?
+  seoTitleI18n    Json?
+  seoDescription  String?
+  seoDescriptionI18n Json?
+  published       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  media    Media?        @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  postTags BlogPostTag[]
+
+  @@map("blog_posts")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts BlogPostTag[]
+
+  @@map("tags")
+}
+
+model BlogPostTag {
+  postId String
+  tagId  String
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("blog_post_tags")
+}
+
+model Testimonial {
+  id           String   @id @default(cuid())
+  name         String
+  nameI18n     Json?
+  quote        String
+  quoteI18n    Json?
+  role         String?
+  roleI18n     Json?
+  dish         String?
+  dishI18n     Json?
+  dishCategory String?
+  imageUrl     String? // legacy path
+  mediaId      String? // new media library reference
+  rating       Int      @default(5)
+  sortOrder    Int      @default(0)
+  published    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  media Media? @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+
+  @@map("testimonials")
+}
+
+// ─── Pages & CMS Sections ─────────────────────────────────────────────────────
+
+// Generic pages: home, about, contact, plus custom landing pages.
+model Page {
+  id           String     @id @default(cuid())
+  slug         String     @unique
+  title        String
+  titleI18n    Json?
+  description  String?
+  descriptionI18n Json?
+  status       PageStatus @default(DRAFT)
+  isHome       Boolean    @default(false)
+  coverMediaId String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  coverMedia Media?      @relation("PageCoverMedia", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  blocks     PageBlock[]
+  seo        PageSeo?
+
+  @@index([slug, status])
+  @@map("pages")
+}
+
+// Reusable content blocks for pages. JSON `content` holds shape-specific data.
+model PageBlock {
+  id        String   @id @default(cuid())
+  pageId    String
+  type      String // hero, text, image, cards, values, timeline, menu, cta, etc.
+  name      String? // admin label
+  order     Int      @default(0)
+  content   Json     @default("{}")
+  mediaId   String? // optional primary image/video
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  page  Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  media Media? @relation("PageBlockMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+
+  @@index([pageId, order])
+  @@map("page_blocks")
+}
+
+model PageSeo {
+  id          String  @id @default(cuid())
+  pageId      String  @unique
+  title       String?
+  titleI18n   Json?
+  description String?
+  descriptionI18n Json?
+  keywords    String?
+  keywordsI18n Json?
+  ogImage     String?
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@map("page_seo")
+}
+
+// ─── Home Sections (convenience layer) ─────────────────────────────────────────
+// Each row maps to a section on the home page. They are also editable via PageBlocks,
+// but this table gives a dedicated, typed surface for the homepage.
+
+model HomeSection {
+  id        String   @id @default(cuid())
+  key       String   @unique // categories, featuredMenu, story, whyChooseUs, catering, cta, blog, heroCarousel, offers, etc.
+  label     String
+  order     Int      @default(0)
+  enabled   Boolean  @default(true)
+  content   Json     @default("{}") // section-specific data
+  mediaId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  media Media? @relation("HomeSectionMedia", fields: [mediaId], references: [id], onDelete: SetNull)
+
+  @@index([key, enabled])
+  @@map("home_sections")
+}
+
+// ─── Navigation & Footer ───────────────────────────────────────────────────────
+
+model Navigation {
+  id        String             @id @default(cuid())
+  location  NavigationLocation
+  label     String
+  labelI18n Json?
+  href      String
+  icon      String?
+  order     Int                @default(0)
+  enabled   Boolean            @default(true)
+  parentId  String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  parent   Navigation?  @relation("NavigationChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children Navigation[] @relation("NavigationChildren")
+
+  @@index([location, enabled, order])
+  @@map("navigation")
+}
+
+model Footer {
+  id        String   @id @default(cuid())
+  column    String // column identifier, e.g. "brand", "links", "contact", "social"
+  title     String?
+  content   Json     @default("{}") // links, text, social icons, etc.
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([column, order])
+  @@map("footer")
+}
+
+// ─── Categories & Menu ─────────────────────────────────────────────────────────
+
+model Category {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  name        String
+  nameI18n    Json?
+  description String?
+  descriptionI18n Json?
+  type        CategoryType
+  image       String? // legacy path
+  mediaId     String? // new media library reference
+  order       Int          @default(0)
+  published   Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  media     Media?     @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  menuItems MenuItem[]
+
+  @@index([type, published])
+  @@map("categories")
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  name        String
+  nameI18n    Json?
+  description String
+  descriptionI18n Json?
+  price       Decimal? @db.Decimal(12, 2)
+  categoryId  String
+  image       String? // legacy path
+  mediaId     String? // new media library reference
+  tags        String[] @default([])
+  spicy       Boolean  @default(false)
+  vegetarian  Boolean  @default(false)
+  featured    Boolean  @default(false)
+  published   Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id])
+  media    Media?   @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId, featured, published])
+  @@map("menu_items")
+}
+
+// ─── Announcements & SEO ─────────────────────────────────────────────────────
+
+model Announcement {
+  id         String    @id @default(cuid())
+  message    String
+  messageI18n Json?
+  link       String?
+  active     Boolean   @default(true)
+  startDate  DateTime? @db.Date
+  endDate    DateTime? @db.Date
+  background String? // color class or hex
+  mediaId    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  media Media? @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+
+  @@index([active, startDate, endDate])
+  @@map("announcements")
+}
+
+model SeoSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique // global, home, default-page, etc.
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("seo_settings")
+}
+
+// ─── Contact Messages ───────────────────────────────────────────────────────────
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([read, createdAt])
+  @@map("contact_messages")
+}
+
+// ─── Site Settings (legacy + new) ──────────────────────────────────────────────
+
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  kind      NotificationKind
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  meta      Json             @default("{}")
+  createdAt DateTime         @default(now())
+
+  @@index([read, createdAt])
+  @@map("notifications")
+}
+
+// ─── Telegram Bot ─────────────────────────────────────────────────────────────
+
+model TelegramUser {
+  id              String   @id @default(cuid())
+  telegramId      BigInt   @unique          // Telegram user ID (64-bit)
+  username        String?                   // @username (may change over time)
+  firstName       String
+  lastName        String?
+  languageCode    String   @default("en")   // "en" | "am"
+  isBlocked       Boolean  @default(false)  // user blocked the bot
+  firstSeenAt     DateTime @default(now())
+  lastInteractAt  DateTime @default(now())
+  metadata        Json     @default("{}")   // future: preferences, saved addresses
+
+  requests        ServiceRequest[]
+
+  @@index([telegramId])
+  @@index([lastInteractAt])
+  @@map("telegram_users")
+}
+
+model BotMenu {
+  id          String   @id @default(cuid())
+  key         String   @unique              // "main_menu", "order_services", etc.
+  parentKey   String?                       // null = root-level item in main menu
+  label       String                        // English fallback display label
+  labelI18n   Json?                         // { "en": "Order", "am": "ትዕዛዝ" }
+  action      String   @default("submenu")  // "submenu" | "webapp" | "faq" | "contact" | "about" | "location" | "callback"
+  actionData  String?                       // URL path, callback data, etc.
+  icon        String?                       // Emoji prefix for button text
+  enabled     Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([parentKey, enabled, sortOrder])
+  @@map("bot_menus")
+}
+
+model BotMessage {
+  key         String   @id                  // "welcome", "language_prompt", etc.
+  text        String                        // English fallback text
+  textI18n    Json?                         // { "en": "...", "am": "..." }
+  updatedAt   DateTime @updatedAt
+
+  @@map("bot_messages")
+}
