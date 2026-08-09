@@ -4,7 +4,7 @@
  *
  * Never trust frontend-only data. Always validate on the backend.
  */
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 export interface TelegramWebAppUser {
   id: number;
@@ -61,9 +61,13 @@ export function validateWebAppData(
 
     const calculatedHash = createHmac("sha256", secretKey)
       .update(dataCheckString)
-      .digest("hex");
+      .digest();
+    const providedHash = Buffer.from(hash, "hex");
 
-    if (calculatedHash !== hash) {
+    if (
+      providedHash.length !== calculatedHash.length ||
+      !timingSafeEqual(calculatedHash, providedHash)
+    ) {
       return { valid: false, error: "Invalid hash — data may be tampered" };
     }
 

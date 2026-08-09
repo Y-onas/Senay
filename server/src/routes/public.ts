@@ -291,7 +291,12 @@ const submitSchema = z.object({
   telegram: z.string().optional().nullable(),
   deliveryMethod: z.enum(["PICKUP", "DELIVERY"]).optional().nullable(),
   location: z.string().optional().nullable(),
-  preferredDate: z.string().optional().nullable(),
+  preferredDate: z
+    .union([
+      z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Invalid preferredDate"),
+      z.null(),
+    ])
+    .optional(),
   preferredTime: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   guests: z.number().int().positive().optional().nullable(),
@@ -369,39 +374,43 @@ publicRoutes.post("/requests", async (c) => {
   const prefix = SERVICE_REF_PREFIX[input.serviceSlug] ?? "REQ";
   const reference = makeReference(prefix);
 
-  const request = await prisma.serviceRequest.create({
-    data: {
-      reference,
-      serviceId: service.id,
-      source: input.source as RequestSource,
-      customerName: input.customerName,
-      phone: input.phone,
-      email: input.email ?? undefined,
-      telegram: input.telegram ?? undefined,
-      telegramUserId: resolvedTelegramUserId ?? undefined,
-      deliveryMethod: (input.deliveryMethod as DeliveryMethod | null) ?? undefined,
-      location: input.location ?? undefined,
-      preferredDate: input.preferredDate ? new Date(input.preferredDate) : undefined,
-      preferredTime: input.preferredTime ?? undefined,
-      notes: input.notes ?? undefined,
-      guests: input.guests ?? undefined,
-      packageSummary: input.packageSummary ?? undefined,
-      totalAmount: input.totalAmount ?? undefined,
-      payload: input.payload as Prisma.InputJsonValue,
-      history: {
-        create: { status: "NEW", note: "Request received" },
+  const request = await prisma.$transaction(async (tx) => {
+    const created = await tx.serviceRequest.create({
+      data: {
+        reference,
+        serviceId: service.id,
+        source: input.source as RequestSource,
+        customerName: input.customerName,
+        phone: input.phone,
+        email: input.email ?? undefined,
+        telegram: input.telegram ?? undefined,
+        telegramUserId: resolvedTelegramUserId ?? undefined,
+        deliveryMethod: (input.deliveryMethod as DeliveryMethod | null) ?? undefined,
+        location: input.location ?? undefined,
+        preferredDate: input.preferredDate ? new Date(input.preferredDate) : undefined,
+        preferredTime: input.preferredTime ?? undefined,
+        notes: input.notes ?? undefined,
+        guests: input.guests ?? undefined,
+        packageSummary: input.packageSummary ?? undefined,
+        totalAmount: input.totalAmount ?? undefined,
+        payload: input.payload as Prisma.InputJsonValue,
+        history: {
+          create: { status: "NEW", note: "Request received" },
+        },
       },
-    },
-    include: { service: true, history: true },
-  });
+      include: { service: true, history: true },
+    });
 
-  await prisma.notification.create({
-    data: {
-      kind: "REQUEST",
-      title: `New ${service.name} request`,
-      body: `${input.customerName} — ${input.packageSummary ?? reference}`,
-      meta: { requestId: request.id, reference },
-    },
+    await tx.notification.create({
+      data: {
+        kind: "REQUEST",
+        title: `New ${service.name} request`,
+        body: `${input.customerName} — ${input.packageSummary ?? reference}`,
+        meta: { requestId: created.id, reference },
+      },
+    });
+
+    return created;
   });
 
   // ── Send Telegram notification to admins ─────────────────────────────────
