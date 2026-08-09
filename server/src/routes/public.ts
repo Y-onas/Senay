@@ -332,12 +332,13 @@ publicRoutes.post("/requests", async (c) => {
       return c.json({ error: "Telegram WebApp authentication is required" }, 401);
     }
 
-    const { validateWebAppData } = await import("../bot/helpers/webapp-auth.js");
+    const { validateWebAppData, WEBAPP_AUTH_CLIENT_ERROR } = await import("../bot/helpers/webapp-auth.js");
     const botToken = process.env.BOT_TOKEN || process.env.Bot_token || "";
     const result = validateWebAppData(input.telegramInitData, botToken);
 
     if (!result.valid || !result.user) {
-      return c.json({ error: result.error ?? "Invalid Telegram WebApp authentication" }, 401);
+      console.warn("[Telegram WebApp] request auth failed:", result.error);
+      return c.json({ error: WEBAPP_AUTH_CLIENT_ERROR }, 401);
     }
 
     // Link requests only to the identity validated by Telegram. Upserting also

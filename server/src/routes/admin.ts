@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
-import type { Prisma, RequestStatus } from "@prisma/client";
-import { requireAuth, requirePermission, signAdminToken } from "../lib/auth.js";
+import { Prisma, type RequestStatus } from "@prisma/client";
+import { requireAuth, requirePermission, requirePermissionForMethod, requireReadOrManage, signAdminToken } from "../lib/auth.js";
 import {
   exchangeClerkSession,
   getClerkPublishableKey,
@@ -27,6 +27,13 @@ import {
   sanitizeTelegramSettingsForAdmin,
 } from "../lib/botConfig.js";
 import { resetBotInstance } from "../bot/singleton.js";
+
+function isPrismaNotFound(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2025"
+  );
+}
 
 export const adminRoutes = new Hono();
 
@@ -151,41 +158,59 @@ adminRoutes.get("/auth/me", requireAuth, async (c) => {
 adminRoutes.use("/*", requireAuth);
 
 /** Content / site editors */
-adminRoutes.use("/media", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/media/*", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/content", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/content/*", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/menu", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/menu/*", requirePermission("content.read", "content.manage"));
+adminRoutes.use("/media", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/media/*", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/content", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/content/*", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/menu", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/menu/*", requireReadOrManage("content.read", "content.manage"));
 
 /** Catalog */
-adminRoutes.use("/services", requirePermission("services.read", "services.manage", "packages.read", "packages.manage"));
-adminRoutes.use("/services/*", requirePermission("services.read", "services.manage", "packages.read", "packages.manage"));
-adminRoutes.use("/catalog", requirePermission("packages.read", "packages.manage"));
-adminRoutes.use("/catalog/*", requirePermission("packages.read", "packages.manage"));
+adminRoutes.use(
+  "/services",
+  requirePermissionForMethod(["services.read", "packages.read"], ["services.manage"]),
+);
+adminRoutes.use(
+  "/services/*",
+  requirePermissionForMethod(["services.read", "packages.read"], ["services.manage"]),
+);
+adminRoutes.use("/catalog", requireReadOrManage("packages.read", "packages.manage"));
+adminRoutes.use("/catalog/*", requireReadOrManage("packages.read", "packages.manage"));
 
 /** Telegram */
 adminRoutes.use("/bot", requirePermission("telegram.manage"));
 adminRoutes.use("/bot/*", requirePermission("telegram.manage"));
 
 /** Site content modules (not under /content) */
-adminRoutes.use("/faqs", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/faqs/*", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/gallery", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/gallery/*", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/testimonials", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/testimonials/*", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/blog", requirePermission("content.read", "content.manage"));
-adminRoutes.use("/blog/*", requirePermission("content.read", "content.manage"));
+adminRoutes.use("/faqs", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/faqs/*", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/gallery", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/gallery/*", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/testimonials", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/testimonials/*", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/blog", requireReadOrManage("content.read", "content.manage"));
+adminRoutes.use("/blog/*", requireReadOrManage("content.read", "content.manage"));
 
 /** System */
 adminRoutes.use("/overview", requirePermission("overview.read", "requests.read", "admins.read"));
-adminRoutes.use("/requests", requirePermission("requests.read", "requests.update", "requests.assign"));
-adminRoutes.use("/requests/*", requirePermission("requests.read", "requests.update", "requests.assign"));
+adminRoutes.use(
+  "/requests",
+  requirePermissionForMethod(["requests.read"], ["requests.update", "requests.assign"]),
+);
+adminRoutes.use(
+  "/requests/*",
+  requirePermissionForMethod(["requests.read"], ["requests.update", "requests.assign"]),
+);
 adminRoutes.use("/settings", requirePermission("settings.manage"));
 adminRoutes.use("/settings/*", requirePermission("settings.manage"));
-adminRoutes.use("/notifications", requirePermission("notifications.read", "admins.manage"));
-adminRoutes.use("/notifications/*", requirePermission("notifications.read", "admins.manage"));
+adminRoutes.use(
+  "/notifications",
+  requirePermissionForMethod(["notifications.read"], ["admins.manage"]),
+);
+adminRoutes.use(
+  "/notifications/*",
+  requirePermissionForMethod(["notifications.read"], ["admins.manage"]),
+);
 
 adminRoutes.route("/media", mediaRoutes);
 adminRoutes.route("/content", contentRoutes);
@@ -347,15 +372,21 @@ adminRoutes.patch("/requests/:id/follow-up", async (c) => {
     .safeParse(await c.req.json());
   if (!body.success) return c.json({ error: "Invalid body" }, 400);
 
-  const updated = await prisma.serviceRequest.update({
-    where: { id: c.req.param("id") },
-    data: {
-      followUpStatus: body.data.followUpStatus,
-      followUpNote: body.data.followUpNote ?? null,
-    },
-    include: { service: true },
-  });
-  return c.json({ data: updated });
+  const id = c.req.param("id");
+  try {
+    const updated = await prisma.serviceRequest.update({
+      where: { id },
+      data: {
+        followUpStatus: body.data.followUpStatus,
+        followUpNote: body.data.followUpNote ?? null,
+      },
+      include: { service: true },
+    });
+    return c.json({ data: updated });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 // ── Services ─────────────────────────────────────────────────────────────────
@@ -614,62 +645,99 @@ adminRoutes.patch("/catalog/:id", async (c) => {
     body.data.descriptionI18n,
   );
 
-  const item = await prisma.catalogItem.update({
-    where: { id: c.req.param("id") },
-    data: {
-      ...body.data,
-      name: localizedName.base ?? body.data.name ?? undefined,
-      nameI18n: localizedName.i18n,
-      description:
-        localizedDescription.base ??
-        body.data.description ??
-        undefined,
-      descriptionI18n: localizedDescription.i18n,
-      metadata: body.data.metadata as Prisma.InputJsonValue | undefined,
-    },
-  });
-  return c.json({ data: item });
+  try {
+    const item = await prisma.catalogItem.update({
+      where: { id: c.req.param("id") },
+      data: {
+        ...body.data,
+        name: localizedName.base ?? body.data.name ?? undefined,
+        nameI18n: localizedName.i18n,
+        description:
+          localizedDescription.base ??
+          body.data.description ??
+          undefined,
+        descriptionI18n: localizedDescription.i18n,
+        metadata: body.data.metadata as Prisma.InputJsonValue | undefined,
+      },
+    });
+    return c.json({ data: item });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.delete("/catalog/:id", async (c) => {
-  await prisma.catalogItem.delete({ where: { id: c.req.param("id") } });
-  return c.json({ ok: true });
+  try {
+    await prisma.catalogItem.delete({ where: { id: c.req.param("id") } });
+    return c.json({ ok: true });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 // ── Content ──────────────────────────────────────────────────────────────────
+
+const faqBodySchema = z.object({
+  question: z.string(),
+  questionI18n: z.record(z.string(), z.string()).optional(),
+  answer: z.string(),
+  answerI18n: z.record(z.string(), z.string()).optional(),
+  language: z.enum(["EN", "AM"]).optional(),
+  sortOrder: z.number().int().optional(),
+  published: z.boolean().optional(),
+});
+
+const faqUpdateBodySchema = faqBodySchema.partial();
+
+function faqCreateData(data: z.infer<typeof faqBodySchema>) {
+  const localizedQuestion = syncLocalizedField(data.question, data.questionI18n);
+  const localizedAnswer = syncLocalizedField(data.answer, data.answerI18n);
+  return {
+    question: localizedQuestion.base ?? data.question,
+    questionI18n: localizedQuestion.i18n,
+    answer: localizedAnswer.base ?? data.answer,
+    answerI18n: localizedAnswer.i18n,
+    language: data.language,
+    sortOrder: data.sortOrder,
+    published: data.published,
+  };
+}
+
+function faqUpdateData(data: z.infer<typeof faqUpdateBodySchema>) {
+  const localizedQuestion = syncLocalizedField(data.question, data.questionI18n);
+  const localizedAnswer = syncLocalizedField(data.answer, data.answerI18n);
+  return {
+    ...(data.language !== undefined ? { language: data.language } : {}),
+    ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
+    ...(data.published !== undefined ? { published: data.published } : {}),
+    ...(data.question !== undefined || data.questionI18n !== undefined
+      ? {
+          question: localizedQuestion.base ?? data.question,
+          questionI18n: localizedQuestion.i18n,
+        }
+      : {}),
+    ...(data.answer !== undefined || data.answerI18n !== undefined
+      ? {
+          answer: localizedAnswer.base ?? data.answer,
+          answerI18n: localizedAnswer.i18n,
+        }
+      : {}),
+  };
+}
 
 adminRoutes.get("/faqs", async (c) => {
   return c.json({ data: await prisma.faq.findMany({ orderBy: { sortOrder: "asc" } }) });
 });
 
 adminRoutes.post("/faqs", async (c) => {
-  const body = z
-    .object({
-      question: z.string(),
-      questionI18n: z.record(z.string(), z.string()).optional(),
-      answer: z.string(),
-      answerI18n: z.record(z.string(), z.string()).optional(),
-      language: z.enum(["EN", "AM"]).optional(),
-      sortOrder: z.number().int().optional(),
-      published: z.boolean().optional(),
-    })
-    .safeParse(await c.req.json());
+  const body = faqBodySchema.safeParse(await c.req.json());
   if (!body.success) return c.json({ error: "Invalid body" }, 400);
-  const localizedQuestion = syncLocalizedField(
-    body.data.question,
-    body.data.questionI18n,
-  );
-  const localizedAnswer = syncLocalizedField(body.data.answer, body.data.answerI18n);
   return c.json(
     {
       data: await prisma.faq.create({
-        data: {
-          ...body.data,
-          question: localizedQuestion.base ?? body.data.question,
-          questionI18n: localizedQuestion.i18n,
-          answer: localizedAnswer.base ?? body.data.answer,
-          answerI18n: localizedAnswer.i18n,
-        },
+        data: faqCreateData(body.data),
       }),
     },
     201,
@@ -677,51 +745,33 @@ adminRoutes.post("/faqs", async (c) => {
 });
 
 adminRoutes.patch("/faqs/:id", async (c) => {
-  const body = (await c.req.json()) as Record<string, unknown>;
-  const localizedQuestion = syncLocalizedField(
-    typeof body.question === "string" ? body.question : undefined,
-    body.questionI18n,
-  );
-  const localizedAnswer = syncLocalizedField(
-    typeof body.answer === "string" ? body.answer : undefined,
-    body.answerI18n,
-  );
-  return c.json({
-    data: await prisma.faq.update({
+  const body = faqUpdateBodySchema.safeParse(await c.req.json());
+  if (!body.success) return c.json({ error: "Invalid body" }, 400);
+  try {
+    const data = await prisma.faq.update({
       where: { id: c.req.param("id") },
-      data: {
-        ...body,
-        question: localizedQuestion.base ?? (body.question as string | undefined),
-        questionI18n: localizedQuestion.i18n,
-        answer: localizedAnswer.base ?? (body.answer as string | undefined),
-        answerI18n: localizedAnswer.i18n,
-      },
-    }),
-  });
+      data: faqUpdateData(body.data),
+    });
+    return c.json({ data });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.put("/faqs/:id", async (c) => {
-  const body = (await c.req.json()) as Record<string, unknown>;
-  const localizedQuestion = syncLocalizedField(
-    typeof body.question === "string" ? body.question : undefined,
-    body.questionI18n,
-  );
-  const localizedAnswer = syncLocalizedField(
-    typeof body.answer === "string" ? body.answer : undefined,
-    body.answerI18n,
-  );
-  return c.json({
-    data: await prisma.faq.update({
+  const body = faqUpdateBodySchema.safeParse(await c.req.json());
+  if (!body.success) return c.json({ error: "Invalid body" }, 400);
+  try {
+    const data = await prisma.faq.update({
       where: { id: c.req.param("id") },
-      data: {
-        ...body,
-        question: localizedQuestion.base ?? (body.question as string | undefined),
-        questionI18n: localizedQuestion.i18n,
-        answer: localizedAnswer.base ?? (body.answer as string | undefined),
-        answerI18n: localizedAnswer.i18n,
-      },
-    }),
-  });
+      data: faqUpdateData(body.data),
+    });
+    return c.json({ data });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.post("/faqs/reorder", async (c) => {
@@ -736,8 +786,13 @@ adminRoutes.post("/faqs/reorder", async (c) => {
 });
 
 adminRoutes.delete("/faqs/:id", async (c) => {
-  await prisma.faq.delete({ where: { id: c.req.param("id") } });
-  return c.json({ ok: true });
+  try {
+    await prisma.faq.delete({ where: { id: c.req.param("id") } });
+    return c.json({ ok: true });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.get("/gallery", async (c) => {
@@ -746,36 +801,67 @@ adminRoutes.get("/gallery", async (c) => {
   });
 });
 
+const galleryBodySchema = z.object({
+  url: z.string().min(1),
+  name: z.string().optional().nullable(),
+  nameI18n: z.record(z.string(), z.string()).optional(),
+  category: z.string().min(1),
+  caption: z.string().optional().nullable(),
+  captionI18n: z.record(z.string(), z.string()).optional(),
+  tall: z.boolean().optional(),
+  sortOrder: z.number().int().optional(),
+  published: z.boolean().optional(),
+});
+
+const galleryUpdateBodySchema = galleryBodySchema.partial();
+
+function galleryCreateData(data: z.infer<typeof galleryBodySchema>) {
+  const localizedName = syncLocalizedField(data.name, data.nameI18n);
+  const localizedCaption = syncLocalizedField(data.caption, data.captionI18n);
+  return {
+    url: data.url,
+    category: data.category,
+    name: localizedName.base ?? data.name,
+    nameI18n: localizedName.i18n,
+    caption: localizedCaption.base ?? data.caption,
+    captionI18n: localizedCaption.i18n,
+    tall: data.tall,
+    sortOrder: data.sortOrder,
+    published: data.published,
+  };
+}
+
+function galleryUpdateData(data: z.infer<typeof galleryUpdateBodySchema>) {
+  const localizedName = syncLocalizedField(data.name, data.nameI18n);
+  const localizedCaption = syncLocalizedField(data.caption, data.captionI18n);
+  return {
+    ...(data.url !== undefined ? { url: data.url } : {}),
+    ...(data.category !== undefined ? { category: data.category } : {}),
+    ...(data.tall !== undefined ? { tall: data.tall } : {}),
+    ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
+    ...(data.published !== undefined ? { published: data.published } : {}),
+    ...(data.name !== undefined || data.nameI18n !== undefined
+      ? {
+          name: localizedName.base ?? data.name,
+          nameI18n: localizedName.i18n,
+        }
+      : {}),
+    ...(data.caption !== undefined || data.captionI18n !== undefined
+      ? {
+          caption: localizedCaption.base ?? data.caption,
+          captionI18n: localizedCaption.i18n,
+        }
+      : {}),
+  };
+}
+
 adminRoutes.post("/gallery", async (c) => {
-  const body = z
-    .object({
-      url: z.string().min(1),
-      name: z.string().optional().nullable(),
-      nameI18n: z.record(z.string(), z.string()).optional(),
-      category: z.string().min(1),
-      caption: z.string().optional().nullable(),
-      captionI18n: z.record(z.string(), z.string()).optional(),
-      tall: z.boolean().optional(),
-      sortOrder: z.number().int().optional(),
-      published: z.boolean().optional(),
-    })
-    .safeParse(await c.req.json());
+  const body = galleryBodySchema.safeParse(await c.req.json());
   if (!body.success) return c.json({ error: "Invalid body" }, 400);
-  const localizedName = syncLocalizedField(body.data.name, body.data.nameI18n);
-  const localizedCaption = syncLocalizedField(
-    body.data.caption,
-    body.data.captionI18n,
-  );
   return c.json(
     {
       data: await prisma.galleryImage.create({
-        data: {
-          ...body.data,
-          name: localizedName.base ?? body.data.name,
-          nameI18n: localizedName.i18n,
-          caption: localizedCaption.base ?? body.data.caption,
-          captionI18n: localizedCaption.i18n,
-        },
+        data: galleryCreateData(body.data),
       }),
     },
     201,
@@ -783,51 +869,33 @@ adminRoutes.post("/gallery", async (c) => {
 });
 
 adminRoutes.patch("/gallery/:id", async (c) => {
-  const body = (await c.req.json()) as Record<string, unknown>;
-  const localizedName = syncLocalizedField(
-    typeof body.name === "string" ? body.name : undefined,
-    body.nameI18n,
-  );
-  const localizedCaption = syncLocalizedField(
-    typeof body.caption === "string" ? body.caption : undefined,
-    body.captionI18n,
-  );
-  return c.json({
-    data: await prisma.galleryImage.update({
+  const body = galleryUpdateBodySchema.safeParse(await c.req.json());
+  if (!body.success) return c.json({ error: "Invalid body" }, 400);
+  try {
+    const data = await prisma.galleryImage.update({
       where: { id: c.req.param("id") },
-      data: {
-        ...body,
-        name: localizedName.base ?? (body.name as string | undefined),
-        nameI18n: localizedName.i18n,
-        caption: localizedCaption.base ?? (body.caption as string | undefined),
-        captionI18n: localizedCaption.i18n,
-      },
-    }),
-  });
+      data: galleryUpdateData(body.data),
+    });
+    return c.json({ data });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.put("/gallery/:id", async (c) => {
-  const body = (await c.req.json()) as Record<string, unknown>;
-  const localizedName = syncLocalizedField(
-    typeof body.name === "string" ? body.name : undefined,
-    body.nameI18n,
-  );
-  const localizedCaption = syncLocalizedField(
-    typeof body.caption === "string" ? body.caption : undefined,
-    body.captionI18n,
-  );
-  return c.json({
-    data: await prisma.galleryImage.update({
+  const body = galleryUpdateBodySchema.safeParse(await c.req.json());
+  if (!body.success) return c.json({ error: "Invalid body" }, 400);
+  try {
+    const data = await prisma.galleryImage.update({
       where: { id: c.req.param("id") },
-      data: {
-        ...body,
-        name: localizedName.base ?? (body.name as string | undefined),
-        nameI18n: localizedName.i18n,
-        caption: localizedCaption.base ?? (body.caption as string | undefined),
-        captionI18n: localizedCaption.i18n,
-      },
-    }),
-  });
+      data: galleryUpdateData(body.data),
+    });
+    return c.json({ data });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.post("/gallery/reorder", async (c) => {
@@ -842,8 +910,13 @@ adminRoutes.post("/gallery/reorder", async (c) => {
 });
 
 adminRoutes.delete("/gallery/:id", async (c) => {
-  await prisma.galleryImage.delete({ where: { id: c.req.param("id") } });
-  return c.json({ ok: true });
+  try {
+    await prisma.galleryImage.delete({ where: { id: c.req.param("id") } });
+    return c.json({ ok: true });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.get("/testimonials", async (c) => {
@@ -852,43 +925,91 @@ adminRoutes.get("/testimonials", async (c) => {
   });
 });
 
+const testimonialBodySchema = z.object({
+  name: z.string().min(1),
+  nameI18n: z.record(z.string(), z.string()).optional(),
+  quote: z.string().min(1),
+  quoteI18n: z.record(z.string(), z.string()).optional(),
+  role: z.string().optional().nullable(),
+  roleI18n: z.record(z.string(), z.string()).optional(),
+  dish: z.string().optional().nullable(),
+  dishI18n: z.record(z.string(), z.string()).optional(),
+  dishCategory: z.string().optional().nullable(),
+  imageUrl: z.string().optional().nullable(),
+  rating: z.number().int().min(1).max(5).optional(),
+  sortOrder: z.number().int().optional(),
+  published: z.boolean().optional(),
+});
+
+const testimonialUpdateBodySchema = testimonialBodySchema.partial();
+
+function testimonialCreateData(data: z.infer<typeof testimonialBodySchema>) {
+  const localizedName = syncLocalizedField(data.name, data.nameI18n);
+  const localizedQuote = syncLocalizedField(data.quote, data.quoteI18n);
+  const localizedRole = syncLocalizedField(data.role, data.roleI18n);
+  const localizedDish = syncLocalizedField(data.dish, data.dishI18n);
+  return {
+    name: localizedName.base ?? data.name,
+    nameI18n: localizedName.i18n,
+    quote: localizedQuote.base ?? data.quote,
+    quoteI18n: localizedQuote.i18n,
+    role: localizedRole.base ?? data.role,
+    roleI18n: localizedRole.i18n,
+    dish: localizedDish.base ?? data.dish,
+    dishI18n: localizedDish.i18n,
+    dishCategory: data.dishCategory,
+    imageUrl: data.imageUrl,
+    rating: data.rating,
+    sortOrder: data.sortOrder,
+    published: data.published,
+  };
+}
+
+function testimonialUpdateData(data: z.infer<typeof testimonialUpdateBodySchema>) {
+  const localizedName = syncLocalizedField(data.name, data.nameI18n);
+  const localizedQuote = syncLocalizedField(data.quote, data.quoteI18n);
+  const localizedRole = syncLocalizedField(data.role, data.roleI18n);
+  const localizedDish = syncLocalizedField(data.dish, data.dishI18n);
+  return {
+    ...(data.dishCategory !== undefined ? { dishCategory: data.dishCategory } : {}),
+    ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl } : {}),
+    ...(data.rating !== undefined ? { rating: data.rating } : {}),
+    ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
+    ...(data.published !== undefined ? { published: data.published } : {}),
+    ...(data.name !== undefined || data.nameI18n !== undefined
+      ? {
+          name: localizedName.base ?? data.name,
+          nameI18n: localizedName.i18n,
+        }
+      : {}),
+    ...(data.quote !== undefined || data.quoteI18n !== undefined
+      ? {
+          quote: localizedQuote.base ?? data.quote,
+          quoteI18n: localizedQuote.i18n,
+        }
+      : {}),
+    ...(data.role !== undefined || data.roleI18n !== undefined
+      ? {
+          role: localizedRole.base ?? data.role,
+          roleI18n: localizedRole.i18n,
+        }
+      : {}),
+    ...(data.dish !== undefined || data.dishI18n !== undefined
+      ? {
+          dish: localizedDish.base ?? data.dish,
+          dishI18n: localizedDish.i18n,
+        }
+      : {}),
+  };
+}
+
 adminRoutes.post("/testimonials", async (c) => {
-  const body = z
-    .object({
-      name: z.string().min(1),
-      nameI18n: z.record(z.string(), z.string()).optional(),
-      quote: z.string().min(1),
-      quoteI18n: z.record(z.string(), z.string()).optional(),
-      role: z.string().optional().nullable(),
-      roleI18n: z.record(z.string(), z.string()).optional(),
-      dish: z.string().optional().nullable(),
-      dishI18n: z.record(z.string(), z.string()).optional(),
-      dishCategory: z.string().optional().nullable(),
-      imageUrl: z.string().optional().nullable(),
-      rating: z.number().int().min(1).max(5).optional(),
-      sortOrder: z.number().int().optional(),
-      published: z.boolean().optional(),
-    })
-    .safeParse(await c.req.json());
+  const body = testimonialBodySchema.safeParse(await c.req.json());
   if (!body.success) return c.json({ error: "Invalid body" }, 400);
-  const localizedName = syncLocalizedField(body.data.name, body.data.nameI18n);
-  const localizedQuote = syncLocalizedField(body.data.quote, body.data.quoteI18n);
-  const localizedRole = syncLocalizedField(body.data.role, body.data.roleI18n);
-  const localizedDish = syncLocalizedField(body.data.dish, body.data.dishI18n);
   return c.json(
     {
       data: await prisma.testimonial.create({
-        data: {
-          ...body.data,
-          name: localizedName.base ?? body.data.name,
-          nameI18n: localizedName.i18n,
-          quote: localizedQuote.base ?? body.data.quote,
-          quoteI18n: localizedQuote.i18n,
-          role: localizedRole.base ?? body.data.role,
-          roleI18n: localizedRole.i18n,
-          dish: localizedDish.base ?? body.data.dish,
-          dishI18n: localizedDish.i18n,
-        },
+        data: testimonialCreateData(body.data),
       }),
     },
     201,
@@ -896,75 +1017,33 @@ adminRoutes.post("/testimonials", async (c) => {
 });
 
 adminRoutes.patch("/testimonials/:id", async (c) => {
-  const body = (await c.req.json()) as Record<string, unknown>;
-  const localizedName = syncLocalizedField(
-    typeof body.name === "string" ? body.name : undefined,
-    body.nameI18n,
-  );
-  const localizedQuote = syncLocalizedField(
-    typeof body.quote === "string" ? body.quote : undefined,
-    body.quoteI18n,
-  );
-  const localizedRole = syncLocalizedField(
-    typeof body.role === "string" ? body.role : undefined,
-    body.roleI18n,
-  );
-  const localizedDish = syncLocalizedField(
-    typeof body.dish === "string" ? body.dish : undefined,
-    body.dishI18n,
-  );
-  return c.json({
-    data: await prisma.testimonial.update({
+  const body = testimonialUpdateBodySchema.safeParse(await c.req.json());
+  if (!body.success) return c.json({ error: "Invalid body" }, 400);
+  try {
+    const data = await prisma.testimonial.update({
       where: { id: c.req.param("id") },
-      data: {
-        ...body,
-        name: localizedName.base ?? (body.name as string | undefined),
-        nameI18n: localizedName.i18n,
-        quote: localizedQuote.base ?? (body.quote as string | undefined),
-        quoteI18n: localizedQuote.i18n,
-        role: localizedRole.base ?? (body.role as string | undefined),
-        roleI18n: localizedRole.i18n,
-        dish: localizedDish.base ?? (body.dish as string | undefined),
-        dishI18n: localizedDish.i18n,
-      },
-    }),
-  });
+      data: testimonialUpdateData(body.data),
+    });
+    return c.json({ data });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.put("/testimonials/:id", async (c) => {
-  const body = (await c.req.json()) as Record<string, unknown>;
-  const localizedName = syncLocalizedField(
-    typeof body.name === "string" ? body.name : undefined,
-    body.nameI18n,
-  );
-  const localizedQuote = syncLocalizedField(
-    typeof body.quote === "string" ? body.quote : undefined,
-    body.quoteI18n,
-  );
-  const localizedRole = syncLocalizedField(
-    typeof body.role === "string" ? body.role : undefined,
-    body.roleI18n,
-  );
-  const localizedDish = syncLocalizedField(
-    typeof body.dish === "string" ? body.dish : undefined,
-    body.dishI18n,
-  );
-  return c.json({
-    data: await prisma.testimonial.update({
+  const body = testimonialUpdateBodySchema.safeParse(await c.req.json());
+  if (!body.success) return c.json({ error: "Invalid body" }, 400);
+  try {
+    const data = await prisma.testimonial.update({
       where: { id: c.req.param("id") },
-      data: {
-        ...body,
-        name: localizedName.base ?? (body.name as string | undefined),
-        nameI18n: localizedName.i18n,
-        quote: localizedQuote.base ?? (body.quote as string | undefined),
-        quoteI18n: localizedQuote.i18n,
-        role: localizedRole.base ?? (body.role as string | undefined),
-        roleI18n: localizedRole.i18n,
-        dish: localizedDish.base ?? (body.dish as string | undefined),
-        dishI18n: localizedDish.i18n,
-      },
-    }),
-  });
+      data: testimonialUpdateData(body.data),
+    });
+    return c.json({ data });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.post("/testimonials/reorder", async (c) => {
@@ -979,8 +1058,13 @@ adminRoutes.post("/testimonials/reorder", async (c) => {
 });
 
 adminRoutes.delete("/testimonials/:id", async (c) => {
-  await prisma.testimonial.delete({ where: { id: c.req.param("id") } });
-  return c.json({ ok: true });
+  try {
+    await prisma.testimonial.delete({ where: { id: c.req.param("id") } });
+    return c.json({ ok: true });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.get("/blog", async (c) => {
@@ -1140,27 +1224,42 @@ adminRoutes.patch("/blog/:id", async (c) => {
   const body = blogBodySchema.safeParse(await c.req.json());
   if (!body.success) return c.json({ error: "Invalid body" }, 400);
 
-  const post = await prisma.blogPost.update({
-    where: { id: c.req.param("id") },
-    data: serializeBlogInput(body.data),
-  });
-  return c.json({ data: { ...post, blocks: normalizeBlocks(post.blocks, post.content) } });
+  try {
+    const post = await prisma.blogPost.update({
+      where: { id: c.req.param("id") },
+      data: serializeBlogInput(body.data),
+    });
+    return c.json({ data: { ...post, blocks: normalizeBlocks(post.blocks, post.content) } });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.put("/blog/:id", async (c) => {
   const body = blogBodySchema.safeParse(await c.req.json());
   if (!body.success) return c.json({ error: "Invalid body" }, 400);
 
-  const post = await prisma.blogPost.update({
-    where: { id: c.req.param("id") },
-    data: serializeBlogInput(body.data),
-  });
-  return c.json({ data: { ...post, blocks: normalizeBlocks(post.blocks, post.content) } });
+  try {
+    const post = await prisma.blogPost.update({
+      where: { id: c.req.param("id") },
+      data: serializeBlogInput(body.data),
+    });
+    return c.json({ data: { ...post, blocks: normalizeBlocks(post.blocks, post.content) } });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.delete("/blog/:id", async (c) => {
-  await prisma.blogPost.delete({ where: { id: c.req.param("id") } });
-  return c.json({ ok: true });
+  try {
+    await prisma.blogPost.delete({ where: { id: c.req.param("id") } });
+    return c.json({ ok: true });
+  } catch (error) {
+    if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+    throw error;
+  }
 });
 
 adminRoutes.get("/settings/:key", async (c) => {

@@ -137,7 +137,7 @@ export function deepResolveLocalizedTree(
 ): unknown {
   if (Array.isArray(value)) {
     return value.map((entry) =>
-      deepResolveLocalizedTree(entry, locale, fallbackLocale),
+      deepResolveLocalizedTree(entry, locale, fallbackLocale, key),
     );
   }
   if (typeof value === "string") {

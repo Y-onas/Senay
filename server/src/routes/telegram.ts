@@ -3,13 +3,12 @@
  * These endpoints support the bot and WebApp integration.
  */
 import { Hono } from "hono";
-import { webhookCallback } from "grammy";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../lib/auth.js";
-import { validateWebAppData } from "../bot/helpers/webapp-auth.js";
+import { validateWebAppData, WEBAPP_AUTH_CLIENT_ERROR } from "../bot/helpers/webapp-auth.js";
 import { resolveLocalizedText, isLocalizedText } from "../lib/i18nContent.js";
 import { resolveBotToken } from "../lib/botConfig.js";
-import { getBot } from "../bot/singleton.js";
+import { getWebhookHandler } from "../bot/singleton.js";
 
 export const telegramRoutes = new Hono();
 
@@ -26,8 +25,7 @@ function resolveI18n(base: string | null | undefined, i18nMap: unknown, lang: st
 /** Telegram webhook receiver (used when BOT_MODE=webhook). */
 telegramRoutes.post("/webhook", async (c) => {
   try {
-    const bot = await getBot();
-    const handler = webhookCallback(bot, "hono");
+    const handler = await getWebhookHandler();
     return await handler(c);
   } catch (error) {
     console.error("[Telegram Webhook]", error);
@@ -48,7 +46,8 @@ telegramRoutes.post("/verify-webapp", async (c) => {
   const result = validateWebAppData(initData, botToken);
 
   if (!result.valid) {
-    return c.json({ error: result.error, valid: false }, 401);
+    console.warn("[Telegram WebApp] verify-webapp failed:", result.error);
+    return c.json({ error: WEBAPP_AUTH_CLIENT_ERROR, valid: false }, 401);
   }
 
   // If valid, also return the linked TelegramUser from our DB

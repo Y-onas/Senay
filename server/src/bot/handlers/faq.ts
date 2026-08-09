@@ -5,6 +5,7 @@
  */
 import { prisma } from "../../lib/prisma.js";
 import type { BotContext } from "../middleware/user.js";
+import { escapeHtml } from "../helpers/html.js";
 import { resolveI18n } from "../helpers/localize.js";
 import { InlineKeyboard } from "grammy";
 
@@ -25,8 +26,8 @@ export async function handleFaqCallback(ctx: BotContext): Promise<void> {
     return;
   }
 
-  const question = resolveI18n(faq.question, faq.questionI18n, lang);
-  const answer = resolveI18n(faq.answer, faq.answerI18n, lang);
+  const question = escapeHtml(resolveI18n(faq.question, faq.questionI18n, lang));
+  const answer = escapeHtml(resolveI18n(faq.answer, faq.answerI18n, lang));
 
   const text = `<b>❓ ${question}</b>\n\n${answer}`;
 

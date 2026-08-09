@@ -32,18 +32,17 @@ async function replacePublicImageUrls(map: Map<string, string>): Promise<number>
 
   const replaceValue = (value: string | null | undefined) => {
     if (!value) return value;
+    let next = value;
     for (const [from, to] of map.entries()) {
-      if (value === from || value.includes(from)) {
-        updated += 1;
-        return value.replace(from, to);
-      }
+      if (next.includes(from)) next = next.split(from).join(to);
     }
-    return value;
+    return next;
   };
 
   for (const service of await prisma.service.findMany()) {
     const next = replaceValue(service.image);
     if (next !== service.image) {
+      updated += 1;
       await prisma.service.update({ where: { id: service.id }, data: { image: next ?? null } });
     }
   }
@@ -52,6 +51,7 @@ async function replacePublicImageUrls(map: Map<string, string>): Promise<number>
     const nextImage = replaceValue(item.image);
     const nextImages = item.images.map((img) => replaceValue(img) ?? img);
     if (nextImage !== item.image || nextImages.some((img, i) => img !== item.images[i])) {
+      updated += 1;
       await prisma.catalogItem.update({
         where: { id: item.id },
         data: { image: nextImage ?? null, images: nextImages },
@@ -62,6 +62,7 @@ async function replacePublicImageUrls(map: Map<string, string>): Promise<number>
   for (const item of await prisma.galleryImage.findMany()) {
     const next = replaceValue(item.url);
     if (next !== item.url) {
+      updated += 1;
       await prisma.galleryImage.update({ where: { id: item.id }, data: { url: next ?? item.url } });
     }
   }
@@ -69,6 +70,7 @@ async function replacePublicImageUrls(map: Map<string, string>): Promise<number>
   for (const post of await prisma.blogPost.findMany()) {
     const next = replaceValue(post.image);
     if (next !== post.image) {
+      updated += 1;
       await prisma.blogPost.update({ where: { id: post.id }, data: { image: next ?? null } });
     }
   }

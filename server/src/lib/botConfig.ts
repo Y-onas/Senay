@@ -15,6 +15,7 @@ export type TelegramEnvConfig = {
   botTokenConfigured: boolean;
   botTokenPreview: string;
   webhookUrl: string | null;
+  webhookSecretConfigured: boolean;
   websiteBaseUrl: string | null;
   adminIds: string[];
   botMode: string;
@@ -59,11 +60,16 @@ export function maskBotToken(token: string): string {
 
 /** Secrets and infrastructure URLs — configured in server/.env only. */
 export function resolveBotToken(): string {
-  return process.env.BOT_TOKEN || process.env.Bot_token || "";
+  return (process.env.BOT_TOKEN || process.env.Bot_token || "").trim();
 }
 
 export function resolveWebhookUrl(): string {
   return process.env.BOT_WEBHOOK_URL?.trim() || "";
+}
+
+/** Secret sent by Telegram in X-Telegram-Bot-Api-Secret-Token — required in production webhook mode. */
+export function resolveWebhookSecretToken(): string {
+  return process.env.BOT_WEBHOOK_SECRET?.trim() || "";
 }
 
 export function resolveWebsiteBaseUrl(): string {
@@ -80,6 +86,7 @@ export function getTelegramEnvConfig(): TelegramEnvConfig {
     botTokenConfigured: Boolean(token),
     botTokenPreview: maskBotToken(token),
     webhookUrl: resolveWebhookUrl() || null,
+    webhookSecretConfigured: Boolean(resolveWebhookSecretToken()),
     websiteBaseUrl: resolveWebsiteBaseUrl() || null,
     adminIds: (process.env.ADMIN_IDS || "")
       .split(",")
@@ -169,18 +176,42 @@ export async function getBotHeartbeat(): Promise<Date | null> {
 /** Apply webhook URL to Telegram when configured from the dashboard. */
 export async function syncTelegramWebhook(token: string, webhookUrl: string): Promise<void> {
   const url = webhookUrl.trim();
+
+  const call = async (path: string, init?: RequestInit) => {
+    const res = await fetch(`https://api.telegram.org/bot${token}/${path}`, {
+      ...init,
+      signal: AbortSignal.timeout(10_000),
+    });
+    const text = await res.text();
+    let json: { ok?: boolean; description?: string } = {};
+    try {
+      json = JSON.parse(text) as typeof json;
+    } catch {
+      throw new Error(
+        `Telegram ${path} failed with status ${res.status}: ${text.slice(0, 200)}`,
+      );
+    }
+    if (!json.ok) {
+      throw new Error(json.description ?? `Telegram ${path} failed`);
+    }
+  };
+
   if (!url) {
-    await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`);
+    await call("deleteWebhook");
     return;
   }
 
-  const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+  const secretToken = resolveWebhookSecretToken();
+  if (!secretToken && process.env.NODE_ENV === "production") {
+    throw new Error("BOT_WEBHOOK_SECRET must be set when registering a webhook in production");
+  }
+
+  await call("setWebhook", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({
+      url,
+      ...(secretToken ? { secret_token: secretToken } : {}),
+    }),
   });
-  const json = (await res.json()) as { ok?: boolean; description?: string };
-  if (!json.ok) {
-    throw new Error(json.description ?? "Failed to set Telegram webhook");
-  }
 }

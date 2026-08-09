@@ -5,8 +5,11 @@ function hasDeliveryTransform(url: string): boolean {
   const marker = "/upload/";
   const idx = url.indexOf(marker);
   if (idx === -1) return false;
-  const after = url.slice(idx + marker.length);
-  return !after.startsWith("v") && after.includes(",");
+  const segment = url.slice(idx + marker.length).split("/")[0] ?? "";
+  if (/^v\d+$/.test(segment)) return false;
+  return segment
+    .split(",")
+    .some((part) => /^[a-z]{1,3}_/.test(part));
 }
 
 /**

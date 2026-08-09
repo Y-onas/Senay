@@ -19,8 +19,11 @@ export interface WebAppValidationResult {
   valid: boolean;
   user?: TelegramWebAppUser;
   authDate?: number;
+  /** Server-side detail for logs — do not expose to HTTP clients. */
   error?: string;
 }
+
+export const WEBAPP_AUTH_CLIENT_ERROR = "Invalid Telegram WebApp authentication";
 
 /**
  * Validate Telegram WebApp initData string.
@@ -80,6 +83,7 @@ export function validateWebAppData(
 
     return { valid: true, user, authDate };
   } catch (err) {
-    return { valid: false, error: `Validation error: ${String(err)}` };
+    console.warn("[Telegram WebApp] validation error:", err);
+    return { valid: false, error: WEBAPP_AUTH_CLIENT_ERROR };
   }
 }

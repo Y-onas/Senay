@@ -2,10 +2,16 @@ import { SignJWT, jwtVerify } from "jose";
 import type { Context, Next } from "hono";
 import { prisma } from "./prisma.js";
 
-const secret = () =>
-  new TextEncoder().encode(
-    process.env.JWT_SECRET || "dev-only-change-me-senay-tela",
-  );
+const secret = () => {
+  const value = process.env.JWT_SECRET;
+  if (!value) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("JWT_SECRET must be set in production");
+    }
+    return new TextEncoder().encode("dev-only-change-me-senay-tela");
+  }
+  return new TextEncoder().encode(value);
+};
 
 export type AuthAdmin = {
   id: string;
@@ -94,4 +100,26 @@ export function requirePermission(...codes: string[]) {
     if (!ok) return c.json({ error: "Forbidden" }, 403);
     await next();
   };
+}
+
+const READ_METHODS = new Set(["GET", "HEAD"]);
+
+/**
+ * GET/HEAD: read or manage permission; mutations: manage (write) only.
+ * Prevents read-only roles from calling POST/PATCH/PUT/DELETE on mounted routes.
+ */
+export function requirePermissionForMethod(
+  readCodes: string[],
+  writeCodes: string[],
+) {
+  return async (c: Context, next: Next) => {
+    const isRead = READ_METHODS.has(c.req.method.toUpperCase());
+    const codes = isRead ? [...readCodes, ...writeCodes] : writeCodes;
+    if (codes.length === 0) return c.json({ error: "Forbidden" }, 403);
+    return requirePermission(...codes)(c, next);
+  };
+}
+
+export function requireReadOrManage(readCode: string, manageCode: string) {
+  return requirePermissionForMethod([readCode], [manageCode]);
 }

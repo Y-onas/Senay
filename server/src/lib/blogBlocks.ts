@@ -103,6 +103,9 @@ export function normalizeBlocks(
 ): BlogBlock[] {
   const parsed = z.array(blogBlockSchema).safeParse(blocks);
   if (parsed.success && parsed.data.length > 0) return parsed.data;
+  if (!parsed.success && Array.isArray(blocks) && blocks.length > 0) {
+    console.warn("normalizeBlocks: invalid block payload", parsed.error.issues);
+  }
   return blocksFromLegacyContent(content);
 }
 

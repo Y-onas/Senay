@@ -91,32 +91,6 @@
     "updatedAt": "2026-08-05T15:13:01.750Z"
   },
   {
-    "id": "1346d974-c5c1-4481-ac47-e2ee71ee653c",
-    "url": "https://res.cloudinary.com/tnldljes/image/upload/v1785942780/senay-tela/photo_2026-07-26_00-01-41.jpg",
-    "publicId": "senay-tela/photo_2026-07-26_00-01-41",
-    "originalName": "photo_2026-07-26_00-01-41.jpg",
-    "mimeType": "image/jpeg",
-    "type": "IMAGE",
-    "alt": null,
-    "caption": null,
-    "sizeBytes": 308532,
-    "createdAt": "2026-07-25T21:04:29.939Z",
-    "updatedAt": "2026-08-05T15:13:15.803Z"
-  },
-  {
-    "id": "6f230a78-9e39-418b-afef-9e3e2d14fb64",
-    "url": "https://res.cloudinary.com/tnldljes/image/upload/v1785942780/senay-tela/photo_2026-07-26_00-01-41.jpg",
-    "publicId": "senay-tela/photo_2026-07-26_00-01-41",
-    "originalName": "photo_2026-07-26_00-01-41.jpg",
-    "mimeType": "image/jpeg",
-    "type": "IMAGE",
-    "alt": null,
-    "caption": null,
-    "sizeBytes": 308532,
-    "createdAt": "2026-07-25T21:02:07.847Z",
-    "updatedAt": "2026-08-05T15:13:30.777Z"
-  },
-  {
     "id": "fa215b91-6a94-4665-b8ff-cc2ce682d5d8",
     "url": "https://res.cloudinary.com/tnldljes/image/upload/v1785942826/senay-tela/photo_2026-07-25_23-48-07.jpg",
     "publicId": "senay-tela/photo_2026-07-25_23-48-07",
@@ -143,19 +117,6 @@
     "updatedAt": "2026-08-05T15:14:01.528Z"
   },
   {
-    "id": "866c0d2e-2ce8-4f4f-9de4-e5249eea16b0",
-    "url": "https://res.cloudinary.com/tnldljes/image/upload/v1785942848/senay-tela/Doro-wot-2-scaled.jpg",
-    "publicId": "senay-tela/Doro-wot-2-scaled",
-    "originalName": "Doro-wot-2-scaled.jpg",
-    "mimeType": "image/jpeg",
-    "type": "IMAGE",
-    "alt": null,
-    "caption": null,
-    "sizeBytes": 117697,
-    "createdAt": "2026-07-25T20:40:21.802Z",
-    "updatedAt": "2026-08-05T15:14:10.081Z"
-  },
-  {
     "id": "e2ee88e4-b4fa-4033-9339-9144a1352131",
     "url": "https://res.cloudinary.com/tnldljes/image/upload/v1785942854/senay-tela/agelgil.jpg",
     "publicId": "senay-tela/agelgil",
@@ -167,32 +128,6 @@
     "sizeBytes": 97572,
     "createdAt": "2026-07-25T20:28:43.485Z",
     "updatedAt": "2026-08-05T15:14:17.196Z"
-  },
-  {
-    "id": "8c9ee1b3-1219-4732-bb8a-bcb675628141",
-    "url": "https://res.cloudinary.com/tnldljes/image/upload/v1785011217/senay-tela/tej.jpg",
-    "publicId": "senay-tela/tej",
-    "originalName": "tej.jpg",
-    "mimeType": "image/jpeg",
-    "type": "IMAGE",
-    "alt": null,
-    "caption": null,
-    "sizeBytes": 127695,
-    "createdAt": "2026-07-25T20:26:57.905Z",
-    "updatedAt": "2026-07-25T20:26:57.905Z"
-  },
-  {
-    "id": "31a1264d-3be8-4b8e-a137-b5fa5868bf40",
-    "url": "https://res.cloudinary.com/tnldljes/image/upload/v1785010191/senay-tela/kurt.jpg",
-    "publicId": "senay-tela/kurt",
-    "originalName": "kurt.jpg",
-    "mimeType": "image/jpeg",
-    "type": "IMAGE",
-    "alt": null,
-    "caption": null,
-    "sizeBytes": 51242,
-    "createdAt": "2026-07-25T20:09:52.225Z",
-    "updatedAt": "2026-07-25T20:09:52.225Z"
   },
   {
     "id": "5d122e06-bdb9-4311-b3c0-fa61c6de970c",
@@ -247,32 +182,6 @@
     "updatedAt": "2026-07-25T20:07:22.864Z"
   },
   {
-    "id": "e049ffae-dc95-437b-b5a9-e38f30cedb1a",
-    "url": "https://res.cloudinary.com/tnldljes/image/upload/v1785010018/senay-tela/kitfo.jpg",
-    "publicId": "senay-tela/kitfo",
-    "originalName": "kitfo.jpg",
-    "mimeType": "image/jpeg",
-    "type": "IMAGE",
-    "alt": null,
-    "caption": null,
-    "sizeBytes": 29887,
-    "createdAt": "2026-07-25T20:06:58.585Z",
-    "updatedAt": "2026-07-25T20:06:58.585Z"
-  },
-  {
-    "id": "67f5ee99-ab22-49ae-9eec-be6fb39d3569",
-    "url": "https://res.cloudinary.com/tnldljes/image/upload/v1785942840/senay-tela/beyaynetu.jpg",
-    "publicId": "senay-tela/beyaynetu",
-    "originalName": "beyaynetu.jpg",
-    "mimeType": "image/jpeg",
-    "type": "IMAGE",
-    "alt": null,
-    "caption": null,
-    "sizeBytes": 144022,
-    "createdAt": "2026-07-25T20:06:34.101Z",
-    "updatedAt": "2026-08-05T15:14:34.299Z"
-  },
-  {
     "id": "f6ff54fa-709c-401e-bad3-4569c16a770d",
     "url": "https://res.cloudinary.com/tnldljes/image/upload/v1785009928/senay-tela/shiro%20combo.jpg",
     "publicId": "senay-tela/shiro combo",
@@ -297,19 +206,6 @@
     "sizeBytes": 40433,
     "createdAt": "2026-07-25T20:05:15.087Z",
     "updatedAt": "2026-07-25T20:05:15.087Z"
-  },
-  {
-    "id": "6936d855-e3b5-49ef-a76d-806a86d85596",
-    "url": "https://res.cloudinary.com/tnldljes/image/upload/v1785942882/senay-tela/Doro-wot-2-scaled.jpg",
-    "publicId": "senay-tela/Doro-wot-2-scaled",
-    "originalName": "Doro-wot-2-scaled.jpg",
-    "mimeType": "image/jpeg",
-    "type": "IMAGE",
-    "alt": null,
-    "caption": null,
-    "sizeBytes": 115144,
-    "createdAt": "2026-07-25T20:04:50.549Z",
-    "updatedAt": "2026-08-05T15:14:44.145Z"
   },
   {
     "id": "8f2760f6-0382-4eba-ad99-4fdb73c25dfd",

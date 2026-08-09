@@ -22,7 +22,7 @@ function normalizeBaseAndI18n(
 }
 // ── Pages ─────────────────────────────────────────────────────────────────────
 const pageSchema = z.object({
-    slug: z.string().min(1).regex(/^[a-z0-9-]+$/i),
+    slug: z.string().min(1).regex(/^[a-z0-9-]+$/, "slug must be lowercase letters, numbers, and dashes"),
     title: z.string().min(1).max(120),
     titleI18n: z.record(z.string(), z.string()).optional(),
     description: z.string().optional(),
@@ -31,14 +31,30 @@ const pageSchema = z.object({
     isHome: z.boolean().default(false),
     coverMediaId: z.string().optional().nullable(),
 });
+const pageStatusQuerySchema = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
+const listLimitQuerySchema = z.coerce.number().int().min(1).max(100);
+
+function parseListLimit(raw: string | undefined, defaultLimit: number): number | null {
+    if (!raw) return defaultLimit;
+    const parsed = listLimitQuerySchema.safeParse(raw);
+    return parsed.success ? parsed.data : null;
+}
+
 contentRoutes.get("/pages", async (c) => {
     const q = c.req.query("q")?.trim();
-    const status = c.req.query("status");
+    const statusRaw = c.req.query("status");
+    let status: PageStatus | undefined;
+    if (statusRaw) {
+        const parsed = pageStatusQuerySchema.safeParse(statusRaw);
+        if (!parsed.success) return c.json({ error: "Invalid status" }, 400);
+        status = parsed.data;
+    }
     const cursor = c.req.query("cursor");
-    const limit = Math.min(Number(c.req.query("limit") || 24), 100);
+    const limit = parseListLimit(c.req.query("limit"), 24);
+    if (limit === null) return c.json({ error: "Invalid limit" }, 400);
     const items = await prisma.page.findMany({
         where: {
-            ...(status ? { status: status as PageStatus } : {}),
+            ...(status ? { status } : {}),
             ...(q
                 ? {
                     OR: [
@@ -135,7 +151,7 @@ contentRoutes.delete("/pages/:id", async (c) => {
 });
 // ── Page Blocks ───────────────────────────────────────────────────────────────
 const blockSchema = z.object({
-    pageId: z.string(),
+    pageId: z.string().optional(),
     type: z.string().min(1),
     name: z.string().optional(),
     order: z.number().int().default(0),
@@ -190,7 +206,7 @@ contentRoutes.delete("/blocks/:id", async (c) => {
 });
 // ── Homepage Sections ─────────────────────────────────────────────────────────
 const sectionSchema = z.object({
-    key: z.string().min(1).regex(/^[a-z0-9-]+$/i),
+    key: z.string().min(1).regex(/^[a-z0-9-]+$/, "key must be lowercase letters, numbers, and dashes"),
     label: z.string().min(1),
     order: z.number().int().default(0),
     enabled: z.boolean().default(true),

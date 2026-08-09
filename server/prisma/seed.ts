@@ -204,8 +204,8 @@ async function seedAdmin(roleId: string) {
       },
       update: { roleId, status: "ACTIVE" },
     });
-    console.log(`Seeded admin from env: ${email}`);
   }
+  console.log(`Seeded ${emails.length} admin account(s) from env.`);
 }
 
 async function seedServices() {
@@ -1678,7 +1678,7 @@ async function seedHomeSections() {
     await prisma.homeSection.upsert({
       where: { key: s.key },
       create: s,
-      update: { label: s.label, order: s.order, content: s.content, enabled: true },
+      update: {},
     });
   }
 }
@@ -1710,7 +1710,7 @@ async function seedPages() {
     await prisma.page.upsert({
       where: { slug: p.slug },
       create: p,
-      update: p,
+      update: {},
     });
   }
 }

@@ -93,8 +93,9 @@ export async function updateMedia(
 
   items[index] = {
     ...items[index],
-    alt: patch.alt ?? items[index].alt ?? null,
-    caption: patch.caption ?? items[index].caption ?? null,
+    alt: "alt" in patch ? (patch.alt ?? null) : (items[index].alt ?? null),
+    caption:
+      "caption" in patch ? (patch.caption ?? null) : (items[index].caption ?? null),
     url: patch.url ?? items[index].url,
     mimeType: patch.mimeType ?? items[index].mimeType,
     sizeBytes: patch.sizeBytes ?? items[index].sizeBytes,

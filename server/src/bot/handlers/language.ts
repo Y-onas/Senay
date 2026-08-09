@@ -15,6 +15,8 @@ export async function handleLanguageSelection(ctx: BotContext): Promise<void> {
   const data = ctx.callbackQuery?.data;
   if (!data?.startsWith("lang:")) return;
 
+  await ctx.answerCallbackQuery();
+
   const lang = data.split(":")[1]; // "en" or "am"
   if (lang !== "en" && lang !== "am") return;
 
@@ -32,9 +34,6 @@ export async function handleLanguageSelection(ctx: BotContext): Promise<void> {
 
   // Update session
   ctx.session.lang = lang;
-
-  // Acknowledge the callback
-  await ctx.answerCallbackQuery();
 
   // Send confirmation
   const confirmation = await getText("language_updated", lang);

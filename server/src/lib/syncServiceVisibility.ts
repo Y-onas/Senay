@@ -1,11 +1,22 @@
 import { prisma } from "./prisma.js";
+import { isLocalizedText, type LocalizedText } from "./i18nContent.js";
 import {
   hrefForServiceSlug,
   isServiceHref,
   slugForServiceHref,
 } from "./serviceRoutes.js";
 
-type FooterLink = { label: string; href: string };
+type FooterLink = { label: string | LocalizedText; href: string };
+
+function serviceFooterLinkLabel(name: string, nameI18n: unknown): LocalizedText {
+  if (isLocalizedText(nameI18n)) {
+    return {
+      en: nameI18n.en?.trim() || name,
+      am: nameI18n.am?.trim() || nameI18n.en?.trim() || name,
+    };
+  }
+  return { en: name, am: name };
+}
 
 export async function getEnabledServiceHrefs(): Promise<Set<string>> {
   const services = await prisma.service.findMany({
@@ -46,7 +57,7 @@ export async function syncServiceVisibility(slug: string, enabled: boolean) {
   const links = Array.isArray(content.links) ? [...content.links] : [];
 
   if (!enabled) {
-    const filtered = filterLinksForEnabledServices(links, new Set());
+    const filtered = links.filter((link) => link.href !== href);
     if (filtered.length === links.length) return;
 
     await prisma.footer.update({
@@ -56,14 +67,20 @@ export async function syncServiceVisibility(slug: string, enabled: boolean) {
     return;
   }
 
-  const service = await prisma.service.findUnique({ where: { slug } });
+  const service = await prisma.service.findUnique({
+    where: { slug },
+    select: { name: true, nameI18n: true },
+  });
   if (!service) return;
 
   const hasLink = links.some((link) => link.href === href);
   if (hasLink) return;
 
   const blogIndex = links.findIndex((link) => link.href === "/blog");
-  const nextLink = { label: service.name, href };
+  const nextLink = {
+    label: serviceFooterLinkLabel(service.name, service.nameI18n),
+    href,
+  };
   const nextLinks =
     blogIndex >= 0
       ? [...links.slice(0, blogIndex), nextLink, ...links.slice(blogIndex)]

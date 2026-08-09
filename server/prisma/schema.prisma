@@ -671,7 +671,7 @@ model BotMenu {
   parentKey   String?                       // null = root-level item in main menu
   label       String                        // English fallback display label
   labelI18n   Json?                         // { "en": "Order", "am": "ትዕዛዝ" }
-  action      String   @default("submenu")  // "submenu" | "webapp" | "faq" | "contact" | "about" | "location" | "callback"
+  action      String   @default("submenu")  // "submenu" | "webapp" | "faq" | "contact" | "about" | "location" | "services" | "callback"
   actionData  String?                       // URL path, callback data, etc.
   icon        String?                       // Emoji prefix for button text
   enabled     Boolean  @default(true)

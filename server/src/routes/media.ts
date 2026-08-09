@@ -40,11 +40,12 @@ mediaRoutes.get("/", async (c) => {
     });
   }
 
+  const total = items.length;
   if (limit > 0) items = items.slice(0, limit);
 
   return c.json({
     data: items,
-    meta: { total: items.length },
+    meta: { total },
   });
 });
 

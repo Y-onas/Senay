@@ -4,6 +4,7 @@ import {
   deepResolveLocalizedTree,
   normalizeLocale,
 } from "../../lib/i18nContent.js";
+import { escapeHtml, safeHttpUrl } from "./html.js";
 import { resolveI18n } from "./localize.js";
 import type { BotContext } from "../middleware/user.js";
 
@@ -29,14 +30,6 @@ export type BotLocations = {
   description: string;
   branches: BotLocationBranch[];
 };
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 function stringValue(value: unknown, lang: string): string | undefined {
   if (typeof value === "string" && value.trim()) return value.trim();
@@ -161,8 +154,9 @@ export function formatBotLocationsMessage(loc: BotLocations, lang: string): stri
     lines.push("");
     if (branch.name) lines.push(`<b>${escapeHtml(branch.name)}</b>`);
     if (branch.area) lines.push(escapeHtml(branch.area));
-    if (branch.mapUrl) {
-      lines.push(`🗺 <a href="${branch.mapUrl}">${openMap}</a>`);
+    const mapUrl = safeHttpUrl(branch.mapUrl);
+    if (mapUrl) {
+      lines.push(`🗺 <a href="${escapeHtml(mapUrl)}">${openMap}</a>`);
     }
   }
 
@@ -175,10 +169,11 @@ export function buildBotLocationsKeyboard(
 ): InlineKeyboard {
   const kb = new InlineKeyboard();
   for (const branch of loc.branches) {
-    if (!branch.mapUrl) continue;
+    const mapUrl = safeHttpUrl(branch.mapUrl);
+    if (!mapUrl) continue;
     const label =
       branch.name.length > 36 ? `${branch.name.slice(0, 33)}…` : branch.name;
-    kb.url(`📍 ${label}`, branch.mapUrl).row();
+    kb.url(`📍 ${label}`, mapUrl).row();
   }
   kb.text(lang === "am" ? "↩️ ተመለስ" : "↩️ Back", "menu:back:main").row();
   return kb;

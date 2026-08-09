@@ -6,6 +6,7 @@
 import { Bot } from "grammy";
 import { prisma } from "../lib/prisma.js";
 import { resolveBotToken, shouldNotifyAdmins } from "../lib/botConfig.js";
+import { escapeHtml } from "./helpers/html.js";
 
 let botInstance: Bot | null = null;
 
@@ -80,7 +81,7 @@ export async function notifyAdmins(message: string): Promise<void> {
 export async function notifyTelegramUser(telegramId: string, message: string): Promise<boolean> {
   const botApi = await getBotApi();
   if (!botApi) {
-    console.warn("[Bot Notifications] BOT_TOKEN is not configured â€” customer confirmation skipped.");
+    console.warn("[Bot Notifications] BOT_TOKEN is not configured — customer confirmation skipped.");
     return false;
   }
 
@@ -109,25 +110,29 @@ export async function notifyNewRequest(request: {
   telegramUsername?: string | null;
 }): Promise<void> {
   const sourceLabel = request.source === "TELEGRAM" ? "🤖 Telegram" : "🌐 Website";
+  const serviceName = escapeHtml(request.serviceName);
+  const reference = escapeHtml(request.reference);
+  const customerName = escapeHtml(request.customerName);
+  const phone = escapeHtml(request.phone);
 
-  let message = `🔔 <b>New ${request.serviceName} Request</b>\n\n`;
-  message += `📋 <b>Reference:</b> ${request.reference}\n`;
-  message += `👤 <b>Customer:</b> ${request.customerName}\n`;
-  message += `📞 <b>Phone:</b> ${request.phone}\n`;
-  message += `📦 <b>Service:</b> ${request.serviceName}\n`;
+  let message = `🔔 <b>New ${serviceName} Request</b>\n\n`;
+  message += `📋 <b>Reference:</b> ${reference}\n`;
+  message += `👤 <b>Customer:</b> ${customerName}\n`;
+  message += `📞 <b>Phone:</b> ${phone}\n`;
+  message += `📦 <b>Service:</b> ${serviceName}\n`;
   message += `📱 <b>Source:</b> ${sourceLabel}\n`;
 
   if (request.telegramUsername) {
-    message += `💬 <b>Telegram:</b> @${request.telegramUsername}\n`;
+    message += `💬 <b>Telegram:</b> @${escapeHtml(request.telegramUsername)}\n`;
   }
   if (request.packageSummary) {
-    message += `📝 <b>Package:</b> ${request.packageSummary}\n`;
+    message += `📝 <b>Package:</b> ${escapeHtml(request.packageSummary)}\n`;
   }
   if (request.totalAmount) {
     message += `💰 <b>Amount:</b> ${request.totalAmount.toLocaleString()} ETB\n`;
   }
   if (request.notes) {
-    message += `\n📌 <b>Notes:</b> ${request.notes}`;
+    message += `\n📌 <b>Notes:</b> ${escapeHtml(request.notes)}`;
   }
 
   await notifyAdmins(message);

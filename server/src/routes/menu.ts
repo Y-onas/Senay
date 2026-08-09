@@ -2,10 +2,17 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth } from "../lib/auth.js";
-import type { CategoryType } from "@prisma/client";
+import { Prisma, type CategoryType } from "@prisma/client";
 import { isLocalizedText, resolveLocalizedText } from "../lib/i18nContent.js";
 export const menuRoutes = new Hono();
 menuRoutes.use("/*", requireAuth);
+
+function isPrismaNotFound(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2025"
+  );
+}
 
 function normalizeBaseAndI18n(
     baseValue: string | null | undefined,
@@ -33,12 +40,27 @@ const categorySchema = z.object({
     order: z.number().int().default(0),
     published: z.boolean().default(true),
 });
+const categoryTypeSchema = z.enum(["PRODUCT", "MENU"]);
+const listLimitQuerySchema = z.coerce.number().int().min(1).max(100);
+
+function parseListLimit(raw: string | undefined, defaultLimit: number): number | null {
+    if (!raw) return defaultLimit;
+    const parsed = listLimitQuerySchema.safeParse(raw);
+    return parsed.success ? parsed.data : null;
+}
+
 menuRoutes.get("/categories", async (c) => {
-    const type = c.req.query("type");
+    const typeRaw = c.req.query("type");
+    let type: CategoryType | undefined;
+    if (typeRaw) {
+        const parsed = categoryTypeSchema.safeParse(typeRaw);
+        if (!parsed.success) return c.json({ error: "Invalid type" }, 400);
+        type = parsed.data;
+    }
     const q = c.req.query("q")?.trim();
     const items = await prisma.category.findMany({
         where: {
-            ...(type ? { type: type as CategoryType } : {}),
+            ...(type ? { type } : {}),
             ...(q
                 ? {
                     OR: [
@@ -109,8 +131,13 @@ menuRoutes.put("/categories/:id", async (c) => {
 });
 menuRoutes.delete("/categories/:id", async (c) => {
     const id = c.req.param("id");
-    await prisma.category.delete({ where: { id } });
-    return c.json({ data: { id } });
+    try {
+        await prisma.category.delete({ where: { id } });
+        return c.json({ data: { id } });
+    } catch (error) {
+        if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+        throw error;
+    }
 });
 // ── Menu Items ─────────────────────────────────────────────────────────────────
 const menuItemSchema = z.object({
@@ -134,7 +161,8 @@ menuRoutes.get("/items", async (c) => {
     const featured = c.req.query("featured");
     const q = c.req.query("q")?.trim();
     const cursor = c.req.query("cursor");
-    const limit = Math.min(Number(c.req.query("limit") || 48), 100);
+    const limit = parseListLimit(c.req.query("limit"), 48);
+    if (limit === null) return c.json({ error: "Invalid limit" }, 400);
     const items = await prisma.menuItem.findMany({
         where: {
             ...(categoryId ? { categoryId } : {}),
@@ -230,6 +258,11 @@ menuRoutes.put("/items/:id", async (c) => {
 });
 menuRoutes.delete("/items/:id", async (c) => {
     const id = c.req.param("id");
-    await prisma.menuItem.delete({ where: { id } });
-    return c.json({ data: { id } });
+    try {
+        await prisma.menuItem.delete({ where: { id } });
+        return c.json({ data: { id } });
+    } catch (error) {
+        if (isPrismaNotFound(error)) return c.json({ error: "Not found" }, 404);
+        throw error;
+    }
 });
