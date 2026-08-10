@@ -1,4 +1,4 @@
-import { readFile, readdir, stat } from "node:fs/promises";
+import { access, readFile, readdir, stat } from "node:fs/promises";
 import { extname, join } from "node:path";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
@@ -151,6 +151,13 @@ export async function ensurePublicSiteImagesImported(): Promise<void> {
   if (!isCloudinaryConfigured()) return;
   const existing = await listMedia();
   if (existing.length > 0) return;
+
+  try {
+    await access(PUBLIC_IMAGES_DIR);
+  } catch {
+    console.warn(`Public images folder not found at ${PUBLIC_IMAGES_DIR}; skipping media seed.`);
+    return;
+  }
 
   const result = await importPublicSiteImages();
   console.log(
