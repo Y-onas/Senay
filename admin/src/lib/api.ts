@@ -1,6 +1,6 @@
 const TOKEN_KEY = 'senay_admin_token'
 const AUTH_FAILED_KEY = 'senay_auth_failed'
-const API_CANDIDATES = ['/st-hq/api', '/api']
+const API_CANDIDATES = ['/api', '/st-hq/api']
 
 let authRedirectPending = false
 
@@ -85,6 +85,11 @@ async function request<T>(
       }
 
       const res = await fetch(`${base}${path}`, { method, headers, body: payload })
+      const contentType = res.headers.get('content-type') ?? ''
+      if (contentType.includes('text/html')) {
+        lastError = new Error('API returned HTML instead of JSON')
+        continue
+      }
 
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))

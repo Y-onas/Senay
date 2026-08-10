@@ -1,7 +1,7 @@
 const TOKEN_KEY = "senay_admin_token";
 const ADMIN_KEY = "senay-cms-admin";
 const AUTH_FAILED_KEY = "senay_auth_failed";
-const API_CANDIDATES = ["/st-hq/api", "/api"];
+const API_CANDIDATES = ["/api", "/st-hq/api"];
 
 const statusEl = document.getElementById("auth-status");
 const errorEl = document.getElementById("auth-error");
@@ -42,6 +42,11 @@ async function apiFetch(path, options = {}) {
   for (const base of API_CANDIDATES) {
     try {
       const res = await fetch(`${base}${path}`, options);
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("text/html")) {
+        lastError = new Error("API returned HTML instead of JSON");
+        continue;
+      }
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         lastError = new Error(json.error || `Request failed (${res.status})`);
@@ -62,6 +67,9 @@ async function exchangeSession(sessionToken) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sessionToken }),
   });
+  if (!data?.token) {
+    throw new Error("Server did not return an admin session token");
+  }
   localStorage.setItem(TOKEN_KEY, data.token);
   if (data.admin) {
     localStorage.setItem(ADMIN_KEY, JSON.stringify(data.admin));

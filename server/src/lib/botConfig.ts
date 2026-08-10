@@ -72,6 +72,11 @@ export function resolveWebhookSecretToken(): string {
   return process.env.BOT_WEBHOOK_SECRET?.trim() || "";
 }
 
+/** Telegram allows only A-Z, a-z, 0-9, underscore, and hyphen (1–256 chars). */
+export function isValidWebhookSecretToken(secret: string): boolean {
+  return /^[A-Za-z0-9_-]{1,256}$/.test(secret);
+}
+
 export function resolveWebsiteBaseUrl(): string {
   return (
     process.env.WEBAPP_URL?.trim() ||
@@ -204,6 +209,11 @@ export async function syncTelegramWebhook(token: string, webhookUrl: string): Pr
   const secretToken = resolveWebhookSecretToken();
   if (!secretToken && process.env.NODE_ENV === "production") {
     throw new Error("BOT_WEBHOOK_SECRET must be set when registering a webhook in production");
+  }
+  if (secretToken && !isValidWebhookSecretToken(secretToken)) {
+    throw new Error(
+      "BOT_WEBHOOK_SECRET must be 1–256 characters and use only A-Z, a-z, 0-9, underscore, and hyphen",
+    );
   }
 
   await call("setWebhook", {

@@ -71,6 +71,13 @@ export function createApp() {
   app.route("/api/admin", adminRoutes);
   app.route("/api/admin/bot", botAdminRoutes);
 
+  // Same-origin admin bundle calls /st-hq/api/* — mirror API routes there too.
+  app.route("/st-hq/api", publicRoutes);
+  app.route("/st-hq/api/contact", contactRoutes);
+  app.route("/st-hq/api/telegram", telegramRoutes);
+  app.route("/st-hq/api/admin", adminRoutes);
+  app.route("/st-hq/api/admin/bot", botAdminRoutes);
+
   // Production: serve Vite build (site + /st-hq admin assets) from ./public/site
   if (shouldServeWeb()) {
     const siteRoot = "./public/site";
@@ -78,13 +85,20 @@ export function createApp() {
 
     app.get("*", (c) => {
       const url = new URL(c.req.url);
-      if (url.pathname.startsWith("/api") || url.pathname.startsWith("/uploads")) {
+      if (
+        url.pathname.startsWith("/api") ||
+        url.pathname.startsWith("/uploads") ||
+        url.pathname.startsWith("/st-hq/api") ||
+        url.pathname.startsWith("/st-hq/uploads")
+      ) {
         return c.notFound();
       }
 
       const stHqLogin = path.join(siteRoot, "st-hq", "login.html");
       if (
-        (url.pathname === "/st-hq/login" || url.pathname === "/st-hq/login/") &&
+        (url.pathname === "/st-hq/login" ||
+          url.pathname === "/st-hq/login/" ||
+          url.pathname === "/st-hq/login.html") &&
         existsSync(stHqLogin)
       ) {
         return c.html(readFileSync(stHqLogin, "utf-8"));

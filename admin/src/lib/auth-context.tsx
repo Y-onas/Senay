@@ -1,5 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { authApi, ApiError, clearAuthFailed, clearToken, getToken, type AdminProfile } from '@/lib/api'
+import {
+  authApi,
+  ApiError,
+  clearAuthFailed,
+  clearToken,
+  getToken,
+  markAuthFailed,
+  type AdminProfile,
+} from '@/lib/api'
 
 type AuthContextValue = {
   admin: AdminProfile | null
@@ -32,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           if (error instanceof ApiError && error.status === 401) {
             clearToken()
+            markAuthFailed()
           }
           setAdmin(null)
         }
