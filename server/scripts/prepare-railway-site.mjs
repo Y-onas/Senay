@@ -30,8 +30,11 @@ fs.cpSync(path.join(adminDist, "index.html"), path.join(adminTarget, "index.html
 fs.cpSync(path.join(adminDist, "assets"), path.join(adminTarget, "assets"), { recursive: true });
 
 const loginBundleDir = path.join(adminDist, "st-hq");
+const loginPublicDir = path.join(root, "admin", "public", "st-hq");
 for (const name of ["login.html", "login.js", "login.css"]) {
-  const src = path.join(loginBundleDir, name);
+  const fromDist = path.join(loginBundleDir, name);
+  const fromPublic = path.join(loginPublicDir, name);
+  const src = fs.existsSync(fromDist) ? fromDist : fromPublic;
   if (fs.existsSync(src)) fs.cpSync(src, path.join(adminTarget, name));
 }
 

@@ -81,6 +81,24 @@ export function createApp() {
   // Production: serve Vite build (site + /st-hq admin assets) from ./public/site
   if (shouldServeWeb()) {
     const siteRoot = "./public/site";
+    const stHqRoot = path.join(siteRoot, "st-hq");
+
+    const loginAssets: Record<string, string> = {
+      "login.html": "text/html; charset=utf-8",
+      "login.js": "text/javascript; charset=utf-8",
+      "login.css": "text/css; charset=utf-8",
+    };
+
+    for (const [file, contentType] of Object.entries(loginAssets)) {
+      app.get(`/st-hq/${file}`, (c) => {
+        const filePath = path.join(stHqRoot, file);
+        if (!existsSync(filePath)) {
+          return c.text(`${file} missing from deploy bundle`, 404);
+        }
+        return c.body(readFileSync(filePath), 200, { "Content-Type": contentType });
+      });
+    }
+
     app.use("/*", serveStatic({ root: siteRoot }));
 
     app.get("*", (c) => {
@@ -89,22 +107,21 @@ export function createApp() {
         url.pathname.startsWith("/api") ||
         url.pathname.startsWith("/uploads") ||
         url.pathname.startsWith("/st-hq/api") ||
-        url.pathname.startsWith("/st-hq/uploads")
+        url.pathname.startsWith("/st-hq/uploads") ||
+        /^\/st-hq\/login\.(html|js|css)$/.test(url.pathname)
       ) {
         return c.notFound();
       }
 
-      const stHqLogin = path.join(siteRoot, "st-hq", "login.html");
+      const stHqLogin = path.join(stHqRoot, "login.html");
       if (
-        (url.pathname === "/st-hq/login" ||
-          url.pathname === "/st-hq/login/" ||
-          url.pathname === "/st-hq/login.html") &&
+        (url.pathname === "/st-hq/login" || url.pathname === "/st-hq/login/") &&
         existsSync(stHqLogin)
       ) {
         return c.html(readFileSync(stHqLogin, "utf-8"));
       }
 
-      const stHqIndex = path.join(siteRoot, "st-hq", "index.html");
+      const stHqIndex = path.join(stHqRoot, "index.html");
       if (url.pathname === "/st-hq" || url.pathname.startsWith("/st-hq/")) {
         if (existsSync(stHqIndex)) return c.html(readFileSync(stHqIndex, "utf-8"));
       }

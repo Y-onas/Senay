@@ -34,9 +34,11 @@ RUN npm run build --prefix admin \
  && cp -r app/dist/. server/public/site/ \
  && cp admin/dist/index.html server/public/site/st-hq/ \
  && cp -r admin/dist/assets server/public/site/st-hq/ \
+ && cp admin/public/st-hq/login.html admin/public/st-hq/login.js admin/public/st-hq/login.css server/public/site/st-hq/ \
  && for f in login.html login.js login.css; do \
       if [ -f "admin/dist/st-hq/$$f" ]; then cp "admin/dist/st-hq/$$f" server/public/site/st-hq/; fi; \
     done \
+ && ls -la server/public/site/st-hq/login.* \
  && echo "Prepared server/public/site (website + /st-hq admin)"
 
 FROM node:22-bookworm-slim AS runner

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Outlet } from 'react-router'
-import { getToken } from '@/lib/api'
+import { getToken, markAuthFailed } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 
 function RedirectToLogin() {
@@ -9,6 +9,7 @@ function RedirectToLogin() {
   useEffect(() => {
     if (redirected.current) return
     redirected.current = true
+    markAuthFailed()
     window.location.replace('/st-hq/login.html')
   }, [])
 
