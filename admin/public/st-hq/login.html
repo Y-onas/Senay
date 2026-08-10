@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Senay Tela Admin — Sign in</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/st-hq/login.css?v=5" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="brand-pane">
+        <div class="brand-glow"></div>
+        <div class="brand-top">
+          <div class="brand-mark">
+            <span class="logo-chip">
+              <img
+                src="/images/senay-logo.png"
+                alt=""
+                data-fallback="https://res.cloudinary.com/tnldljes/image/upload/f_auto,q_auto,w_128/senay-tela/site/senay-logo.jpg"
+              />
+            </span>
+            <div>
+              <p class="brand-name">Senay Tela</p>
+              <p class="brand-sub">Admin</p>
+            </div>
+          </div>
+          <span class="badge">Admin Console</span>
+          <h1 class="welcome">
+            Welcome back to <span class="brand-accent">Senay Tela</span> Admin Panel.
+          </h1>
+          <p class="lede">
+            Sign in with the Google account that matches an email under System → Admins. No
+            passwords are stored or shared.
+          </p>
+        </div>
+        <div class="brand-foot">
+          <p class="secure">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M12 2 4 5v6c0 5 3.4 9.4 8 10.7C16.6 20.4 20 16 20 11V5l-8-3zm0 2.2 6 2.2V11c0 3.9-2.5 7.3-6 8.5-3.5-1.2-6-4.6-6-8.5V6.4l6-2.2z"
+              />
+            </svg>
+            Google sign-in only — access is granted by email, not by password
+          </p>
+          <p class="copy">© 2026 Senay Tela. All rights reserved.</p>
+        </div>
+      </aside>
+
+      <main class="auth-pane">
+        <div class="auth-wrap">
+          <div class="auth-card">
+            <div class="auth-header">
+              <span class="logo-chip small">
+                <img
+                  src="/images/senay-logo.png"
+                  alt="Senay Tela"
+                  data-fallback="https://res.cloudinary.com/tnldljes/image/upload/f_auto,q_auto,w_128/senay-tela/site/senay-logo.jpg"
+                />
+              </span>
+              <div>
+                <h2>Sign in to Senay Tela Admin</h2>
+                <p class="auth-sub">
+                  Use the Google account for the email your super admin granted access to.
+                </p>
+              </div>
+            </div>
+            <div id="clerk-sign-in"></div>
+            <p id="auth-error" class="error" hidden></p>
+            <p id="auth-status" class="status">Loading secure sign-in…</p>
+          </div>
+          <p class="auth-note">Authorized personnel only. All activity is monitored and logged.</p>
+          <button type="button" id="switch-account" class="switch-account" hidden>
+            Sign in with a different account
+          </button>
+          <p class="built-by">
+            Built <span aria-hidden="true">♡</span> by
+            <a href="https://yonasdegarege.com" target="_blank" rel="noreferrer">Yonas</a>
+          </p>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/st-hq/login.js?v=8"></script>
+  </body>
+</html>

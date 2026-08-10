@@ -1,0 +1,24 @@
+{
+  "name": "senay",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Senay Tela — customer site + embedded CMS + API",
+  "scripts": {
+    "setup": "npm install && npm install --prefix app && npm install --prefix server && npm run db:generate --prefix server && npm run db:push --prefix server && npm run db:seed --prefix server",
+    "dev": "npx concurrently -k -n api,web,admin,bot -c blue,green,magenta,yellow \"npm run dev --prefix server\" \"npm run dev --prefix app\" \"npm run dev --prefix admin\" \"npm run bot --prefix server\"",
+    "dev:api": "npm run dev --prefix server",
+    "dev:web": "npm run dev --prefix app",
+    "dev:admin": "npm run dev --prefix admin",
+    "build:admin": "npm run build --prefix admin",
+    "dev:bot": "npm run bot --prefix server",
+    "build": "npm run build --prefix admin && npm run build --prefix app && npm run build --prefix server && node server/scripts/prepare-railway-site.mjs",
+    "stage:admin": "node scripts/stage-admin-dist.mjs",
+    "start": "npm run start --prefix server",
+    "db:push": "npm run db:push --prefix server",
+    "db:seed": "npm run db:seed --prefix server",
+    "db:studio": "npm run db:studio --prefix server"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

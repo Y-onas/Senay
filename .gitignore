@@ -1,0 +1,11 @@
+# Repo-wide (root only). Package-specific rules live in app|admin|server/.gitignore
+node_modules/
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+coverage/
+.tmp/

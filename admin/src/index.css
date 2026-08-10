@@ -1,0 +1,219 @@
+@import '@fontsource/inter/400.css';
+
+@import '@fontsource/inter/500.css';
+
+@import '@fontsource/inter/600.css';
+
+@import '@fontsource/oswald/500.css';
+
+@import '@fontsource/oswald/600.css';
+
+@import '@fontsource/oswald/700.css';
+
+
+
+@tailwind base;
+
+@tailwind components;
+
+@tailwind utilities;
+
+
+
+@layer base {
+
+  :root {
+
+    --background: 40 33% 95%;
+
+    --foreground: 22 42% 16%;
+
+    --card: 0 0% 100%;
+
+    --card-foreground: 22 42% 16%;
+
+    --popover: 0 0% 100%;
+
+    --popover-foreground: 22 42% 16%;
+
+    --primary: 20 35% 26%;
+
+    --primary-foreground: 40 33% 95%;
+
+    --secondary: 39 70% 49%;
+
+    --secondary-foreground: 22 42% 16%;
+
+    --muted: 33 33% 81%;
+
+    --muted-foreground: 22 25% 35%;
+
+    --accent: 44 71% 66%;
+
+    --accent-foreground: 22 42% 16%;
+
+    --destructive: 0 84.2% 60.2%;
+
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 33 33% 81%;
+
+    --input: 33 33% 81%;
+
+    --ring: 20 35% 26%;
+
+    --radius: 0.625rem;
+
+  }
+
+
+
+  * {
+
+    @apply border-border;
+
+  }
+
+
+
+  html {
+
+    scroll-behavior: smooth;
+
+    overflow-x: clip;
+
+  }
+
+
+
+  body {
+
+    @apply bg-cream text-brown font-body antialiased;
+
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+
+    overflow-x: clip;
+
+  }
+
+}
+
+
+
+@layer components {
+
+  .admin-page-shell {
+
+    @apply mx-auto w-full max-w-[1360px] animate-fade-in;
+
+  }
+
+
+
+  .admin-hero {
+
+    @apply relative overflow-hidden rounded-3xl border border-burgundy/20 bg-burgundy text-cream shadow-[0_20px_50px_-20px_rgba(44,26,20,0.55)];
+
+  }
+
+
+
+  .admin-section-title {
+
+    @apply font-display text-[2rem] font-bold leading-tight tracking-tight text-burgundy;
+
+  }
+
+
+
+  .admin-section-subtitle {
+
+    @apply mt-1 text-sm text-brown-muted;
+
+  }
+
+
+
+  .sidebar-scroll {
+
+    scrollbar-width: thin;
+
+    scrollbar-color: rgba(250, 245, 238, 0.18) transparent;
+
+  }
+
+
+
+  .sidebar-scroll::-webkit-scrollbar {
+
+    width: 6px;
+
+  }
+
+
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+
+    background-color: rgba(250, 245, 238, 0.18);
+
+    border-radius: 9999px;
+
+  }
+
+
+
+  .sidebar-scroll::-webkit-scrollbar-track {
+
+    background: transparent;
+
+  }
+
+  .admin-stat-card {
+
+    @apply relative overflow-hidden rounded-2xl border border-border/70 bg-white p-5 shadow-sm;
+
+  }
+
+  .text-gradient-gold {
+
+    @apply bg-gradient-to-br from-gold-light via-yellow-brand to-yellow-dark bg-clip-text text-transparent;
+
+  }
+
+}
+
+
+
+::-webkit-scrollbar {
+
+  width: 8px;
+
+}
+
+
+
+::-webkit-scrollbar-track {
+
+  background: #faf5ee;
+
+}
+
+
+
+::-webkit-scrollbar-thumb {
+
+  background: #2c1a14;
+
+  border-radius: 4px;
+
+}
+
+
+
+::-webkit-scrollbar-thumb:hover {
+
+  background: #931f1d;
+
+}
+
+

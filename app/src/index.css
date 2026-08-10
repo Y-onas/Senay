@@ -1,0 +1,108 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 33% 95%;
+    --foreground: 22 42% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 22 42% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 22 42% 16%;
+    --primary: 20 35% 26%;
+    --primary-foreground: 40 33% 95%;
+    --secondary: 39 70% 49%;
+    --secondary-foreground: 22 42% 16%;
+    --muted: 33 33% 81%;
+    --muted-foreground: 22 25% 35%;
+    --accent: 44 71% 66%;
+    --accent-foreground: 22 42% 16%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 33 33% 81%;
+    --input: 33 33% 81%;
+    --ring: 20 35% 26%;
+    --radius: 0.625rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+    overflow-x: clip;
+  }
+  body {
+    @apply bg-cream text-brown font-body antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    overflow-x: clip;
+  }
+}
+
+@layer components {
+  .section-label {
+    @apply flex items-center gap-2 text-sm font-medium tracking-wider uppercase mb-4;
+  }
+  
+  .section-label::before {
+    content: '';
+    @apply w-2 h-2 rounded-full bg-burgundy;
+  }
+
+  .section-label-light::before {
+    @apply bg-gold-light;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-8 py-3.5 bg-yellow-brand text-burgundy font-semibold rounded-full transition-all duration-200 hover:bg-yellow-dark hover:scale-[1.02];
+  }
+
+  .btn-primary-light {
+    @apply inline-flex items-center gap-2 px-8 py-3.5 bg-cream text-burgundy font-semibold rounded-full transition-all duration-200 hover:bg-cream-warm hover:scale-[1.02];
+  }
+
+  .heading-display {
+    @apply font-display font-bold tracking-tight text-brown;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Mobile hero — explicit utility so height always applies in dev/prod */
+  .min-h-mobile-hero {
+    min-height: min(52svh, 32rem);
+  }
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FAF5EE;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2C1A14;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #931F1D;
+}

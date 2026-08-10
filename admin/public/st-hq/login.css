@@ -1,0 +1,417 @@
+:root {
+  --burgundy: #2c1a14;
+  --burgundy-dark: #1a100c;
+  --burgundy-light: #3d261c;
+  --cream: #faf5ee;
+  --cream-warm: #f3ebd8;
+  --gold: #e8b838;
+  --gold-light: #f0c85a;
+  --gold-dark: #c99a28;
+  --crimson: #931f1d;
+  --muted: rgba(250, 245, 238, 0.7);
+  --ink: #2c1a14;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: Inter, system-ui, sans-serif;
+  background: var(--burgundy-dark);
+  color: var(--cream);
+}
+
+.shell {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  grid-template-columns: minmax(280px, 1.05fr) minmax(320px, 1fr);
+}
+
+.brand-pane {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3rem 3.5rem 2.75rem;
+  background:
+    radial-gradient(720px 420px at 12% 8%, rgba(232, 184, 56, 0.24), transparent 60%),
+    radial-gradient(560px 380px at 92% 90%, rgba(147, 31, 29, 0.38), transparent 62%),
+    linear-gradient(165deg, #140d0a 0%, var(--burgundy) 45%, #24140f 100%);
+}
+
+.brand-glow {
+  pointer-events: none;
+  position: absolute;
+  inset: -18% auto auto -12%;
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(circle, rgba(232, 184, 56, 0.2), transparent 70%);
+}
+
+.brand-top {
+  position: relative;
+  z-index: 1;
+  max-width: 32rem;
+  padding-top: 0.75rem;
+}
+
+.brand-foot {
+  position: relative;
+  z-index: 1;
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 2.5rem;
+}
+
+.logo-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  padding: 6px;
+}
+
+.logo-chip.small {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(44, 26, 20, 0.08);
+  box-shadow: none;
+}
+
+.logo-chip img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+
+.brand-name {
+  margin: 0;
+  font-family: Oswald, Inter, sans-serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.brand-sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 184, 56, 0.4);
+  background: rgba(232, 184, 56, 0.12);
+  color: var(--gold-light);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(232, 184, 56, 0.18);
+}
+
+/* Match Lehulum-style welcome: one flowing sentence, brand highlighted */
+.brand-pane h1.welcome {
+  margin: 0;
+  max-width: 11.5em;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: clamp(2.35rem, 4vw, 3.35rem);
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.025em;
+  color: #fff;
+}
+
+.brand-pane h1.welcome .brand-accent {
+  color: var(--gold);
+}
+
+.lede {
+  margin: 1.35rem 0 0;
+  max-width: 28rem;
+  color: rgba(250, 245, 238, 0.7);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+.secure {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0;
+  color: rgba(250, 245, 238, 0.72);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.secure svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  margin-top: 0.12rem;
+  color: var(--gold);
+}
+
+.copy {
+  margin: 0.45rem 0 0;
+  color: rgba(250, 245, 238, 0.4);
+  font-size: 0.75rem;
+}
+
+.auth-pane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  background:
+    radial-gradient(520px 280px at 85% 8%, rgba(232, 184, 56, 0.12), transparent 60%),
+    radial-gradient(420px 260px at 10% 95%, rgba(44, 26, 20, 0.06), transparent 55%),
+    linear-gradient(180deg, #fffaf3 0%, var(--cream) 55%, var(--cream-warm) 100%);
+}
+
+.auth-wrap {
+  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-card {
+  width: 100%;
+  border-radius: 1.35rem;
+  border: 1px solid rgba(44, 26, 20, 0.08);
+  background: #fff;
+  box-shadow: 0 28px 50px -28px rgba(44, 26, 20, 0.4);
+  padding: 1.5rem 1.4rem 1.35rem;
+  color: var(--ink);
+}
+
+.auth-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  margin-bottom: 1.15rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid rgba(44, 26, 20, 0.08);
+}
+
+.auth-header h2 {
+  margin: 0;
+  font-family: Oswald, Inter, sans-serif;
+  font-size: 1.55rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--burgundy);
+}
+
+.auth-sub {
+  margin: 0.45rem 0 0;
+  color: rgba(44, 26, 20, 0.55);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+#clerk-sign-in {
+  width: 100%;
+}
+
+#clerk-sign-in .cl-rootBox,
+#clerk-sign-in .cl-cardBox,
+#clerk-sign-in .cl-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+#clerk-sign-in .cl-main,
+#clerk-sign-in .cl-header,
+#clerk-sign-in .cl-headerTitle,
+#clerk-sign-in .cl-headerSubtitle,
+#clerk-sign-in .cl-footer,
+#clerk-sign-in .cl-footerAction,
+#clerk-sign-in .cl-internal-b3fm6y,
+#clerk-sign-in .cl-dividerRow,
+#clerk-sign-in .cl-alternativeMethodsBlockButton,
+#clerk-sign-in .cl-form,
+#clerk-sign-in .cl-identityPreview {
+  /* Keep form fields if email flow appears; hide only marketing chrome when possible */
+}
+
+#clerk-sign-in .cl-header {
+  display: none !important;
+}
+
+#clerk-sign-in .cl-footer {
+  display: none !important;
+}
+
+#clerk-sign-in .cl-socialButtonsBlockButton {
+  min-height: 48px !important;
+  border: 1px solid rgba(44, 26, 20, 0.14) !important;
+  border-radius: 0.9rem !important;
+  background: #fff !important;
+  box-shadow: 0 1px 2px rgba(44, 26, 20, 0.04) !important;
+  font-weight: 600 !important;
+  color: var(--burgundy) !important;
+}
+
+#clerk-sign-in .cl-socialButtonsBlockButton:hover {
+  background: var(--cream) !important;
+  border-color: rgba(44, 26, 20, 0.22) !important;
+}
+
+#clerk-sign-in .cl-formButtonPrimary {
+  min-height: 48px !important;
+  border-radius: 0.9rem !important;
+  background: var(--burgundy) !important;
+  color: var(--cream) !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+
+#clerk-sign-in .cl-formButtonPrimary:hover {
+  background: var(--burgundy-light) !important;
+}
+
+#clerk-sign-in .cl-formFieldInput {
+  min-height: 46px !important;
+  border-radius: 0.85rem !important;
+  background: var(--cream) !important;
+  border-color: rgba(44, 26, 20, 0.12) !important;
+}
+
+.status,
+.error {
+  margin: 0.85rem 0 0;
+  text-align: center;
+  font-size: 0.88rem;
+}
+
+.status {
+  color: rgba(44, 26, 20, 0.5);
+}
+
+.error {
+  color: var(--crimson);
+}
+
+.auth-note {
+  margin: 0;
+  text-align: center;
+  color: rgba(44, 26, 20, 0.45);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.switch-account {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--gold-dark);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0.15rem;
+}
+
+.switch-account:hover {
+  color: var(--burgundy);
+}
+
+.built-by {
+  margin: 0.15rem 0 0;
+  text-align: center;
+  color: rgba(44, 26, 20, 0.4);
+  font-size: 0.78rem;
+}
+
+.built-by span {
+  color: var(--crimson);
+}
+
+.built-by a {
+  color: var(--burgundy);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.built-by a:hover {
+  color: var(--gold-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-pane {
+    min-height: auto;
+    padding: 1.6rem 1.35rem 1.4rem;
+  }
+
+  .brand-pane h1.welcome {
+    max-width: none;
+    font-size: 2.1rem;
+  }
+
+  .lede {
+    max-width: none;
+    font-size: 0.92rem;
+  }
+
+  .brand-foot {
+    display: none;
+  }
+
+  .auth-pane {
+    padding: 1.1rem 1rem 2rem;
+    align-items: stretch;
+  }
+
+  .auth-wrap {
+    width: 100%;
+  }
+}
