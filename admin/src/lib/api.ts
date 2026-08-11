@@ -597,5 +597,10 @@ export const botApi = {
     request<TelegramUserDetail>('PATCH', `/admin/bot/users/${id}`, data),
   stats: () => request<BotStats>('GET', '/admin/bot/stats'),
   health: () => request<BotHealth>('GET', '/admin/bot/health'),
+  // Bot notification recipients (admins that have telegramChatId configured)
+  notificationAdmins: () => request<BotAdminNotify[]>('GET', '/admin/bot/admins'),
+  updateNotificationAdmin: (id: string, telegramChatId: string | null) =>
+    request<BotAdminNotify>('PATCH', `/admin/bot/admins/${id}`, { telegramChatId }),
+  // Back-compat: kept for older UI sections (lists all admins).
   admins: () => request<BotAdminNotify[]>('GET', '/admin/admins'),
 }

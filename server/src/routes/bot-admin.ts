@@ -42,6 +42,69 @@ function syncLocalizedField(
 // All routes require admin authentication
 botAdminRoutes.use("/*", requireAuth);
 
+// ── Bot notification admins (telegramChatId recipients) ───────────────────────────────
+
+/**
+ * List active admins that can receive Telegram notifications.
+ * Includes admins even if `telegramChatId` is currently not set so you can add a new recipient.
+ */
+botAdminRoutes.get("/admins", async (c) => {
+  const admins = await prisma.admin.findMany({
+    where: { status: "ACTIVE" },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, name: true, telegramChatId: true },
+  });
+
+  return c.json({ data: admins });
+});
+
+/**
+ * Update an admin's Telegram notification chat id.
+ * Rule: you must always keep at least ONE active admin with `telegramChatId` set.
+ */
+botAdminRoutes.patch("/admins/:id", async (c) => {
+  const body = z
+    .object({
+      telegramChatId: z
+        .string()
+        .trim()
+        .transform((s) => (s === "" ? null : s))
+        .nullable()
+        .refine((v) => v === null || /^-?\d+$/.test(v), {
+          message: "telegramChatId must be a number (optionally with leading '-')",
+        }),
+    })
+    .safeParse(await c.req.json());
+
+  if (!body.success) return c.json({ error: "Invalid body", details: body.error.flatten() }, 400);
+
+  const id = c.req.param("id");
+  const current = await prisma.admin.findUnique({
+    where: { id },
+    select: { id: true, name: true, status: true, telegramChatId: true },
+  });
+  if (!current) return c.json({ error: "Admin not found" }, 404);
+  if (current.status !== "ACTIVE") return c.json({ error: "Admin must be ACTIVE" }, 400);
+
+  // If removing the last notification recipient, block the action.
+  if (body.data.telegramChatId === null && current.telegramChatId !== null) {
+    const remaining = await prisma.admin.count({
+      where: { status: "ACTIVE", telegramChatId: { not: null }, id: { not: current.id } },
+    });
+    if (remaining < 1) {
+      return c.json({ error: "Cannot remove the last bot notification admin" }, 400);
+    }
+  }
+
+  const updated = await prisma.admin.update({
+    where: { id: current.id },
+    data: { telegramChatId: body.data.telegramChatId },
+    select: { id: true, name: true, telegramChatId: true },
+  });
+
+  return c.json({ data: updated });
+});
+
 // ── Bot Menu CRUD ────────────────────────────────────────────────────────────
 
 /** List all bot menus as a flat list (admin builds tree in UI). */

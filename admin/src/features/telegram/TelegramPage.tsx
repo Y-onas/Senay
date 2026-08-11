@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { Save, Bot } from 'lucide-react'
+import { Save, Bot, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   botApi,
@@ -54,6 +54,8 @@ export function TelegramPage() {
   const [health, setHealth] = useState<BotHealth | null>(null)
   const [stats, setStats] = useState<BotStats | null>(null)
   const [admins, setAdmins] = useState<BotAdminNotify[]>([])
+  const [adminChatEdits, setAdminChatEdits] = useState<Record<string, string>>({})
+  const [adminRecipientsSaving, setAdminRecipientsSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -73,7 +75,7 @@ export function TelegramPage() {
         botApi.services(),
         botApi.health(),
         botApi.stats(),
-        botApi.admins(),
+        botApi.notificationAdmins(),
       ])
     const merged = mergeSettings(telegram)
     setSaved(merged)
@@ -83,7 +85,14 @@ export function TelegramPage() {
     setServices(serviceRows ?? [])
     setHealth(healthRow ?? null)
     setStats(statsRow ?? null)
-    setAdmins(adminRows ?? [])
+    const rows = adminRows ?? []
+    setAdmins(rows)
+    setAdminChatEdits(
+      rows.reduce<Record<string, string>>((acc, a) => {
+        acc[a.id] = a.telegramChatId ?? ''
+        return acc
+      }, {}),
+    )
   }
 
   useEffect(() => {
@@ -103,6 +112,23 @@ export function TelegramPage() {
       toast.error(error instanceof Error ? error.message : 'Save failed')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const notificationRecipientsCount = admins.filter((a) => a.telegramChatId && a.telegramChatId.trim()).length
+
+  const setRecipientChatId = async (adminId: string, nextChatId: string | null) => {
+    if (adminRecipientsSaving) return
+    setAdminRecipientsSaving(true)
+    try {
+      const updated = await botApi.updateNotificationAdmin(adminId, nextChatId)
+      setAdmins((rows) => rows.map((r) => (r.id === updated.id ? updated : r)))
+      setAdminChatEdits((prev) => ({ ...prev, [updated.id]: updated.telegramChatId ?? '' }))
+      toast.success('Bot admin updated')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Update failed')
+    } finally {
+      setAdminRecipientsSaving(false)
     }
   }
 
@@ -546,15 +572,63 @@ export function TelegramPage() {
                 <tr className="border-b text-xs uppercase text-brown/60">
                   <th className="py-2 pr-4">Admin</th>
                   <th className="py-2">Telegram chat ID</th>
+                  <th className="py-2 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {admins.map((admin) => (
+                {admins.map((admin) => {
+                  const value = adminChatEdits[admin.id] ?? ''
+                  const trimmed = value.trim()
+                  const isSet = Boolean(admin.telegramChatId && admin.telegramChatId.trim())
+                  const removeDisabled = isSet && notificationRecipientsCount <= 1
+
+                  return (
                   <tr key={admin.id} className="border-b border-border/50">
                     <td className="py-2 pr-4">{admin.name}</td>
-                    <td className="py-2 font-mono text-xs">{admin.telegramChatId || '— not set —'}</td>
+                    <td className="py-2">
+                      <Input
+                        className="w-full max-w-[240px] font-mono text-xs"
+                        placeholder="e.g. 123456789"
+                        value={value}
+                        onChange={(e) => {
+                          const next = e.target.value
+                          setAdminChatEdits((prev) => ({ ...prev, [admin.id]: next }))
+                        }}
+                      />
+                    </td>
+                    <td className="py-2 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            adminRecipientsSaving ||
+                            trimmed === (admin.telegramChatId ?? '') ||
+                            (trimmed.length === 0 && removeDisabled)
+                          }
+                          onClick={() => {
+                            const nextChatId = trimmed.length ? trimmed : null
+                            void setRecipientChatId(admin.id, nextChatId)
+                          }}
+                        >
+                          <Save className="mr-1 h-3.5 w-3.5" />
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={adminRecipientsSaving || removeDisabled}
+                          onClick={() => void setRecipientChatId(admin.id, null)}
+                          title={removeDisabled ? 'You must keep at least one bot admin' : 'Unset Telegram chat ID'}
+                        >
+                          <Trash2 className="mr-1 h-3.5 w-3.5" />
+                          Remove
+                        </Button>
+                      </div>
+                    </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
