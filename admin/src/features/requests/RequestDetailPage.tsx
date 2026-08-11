@@ -27,6 +27,22 @@ const FOLLOW_UP_STATUSES = [
   'ISSUE_REPORTED',
 ] as const
 
+const FOLLOW_UP_STYLES: Record<string, string> = {
+  NONE: 'bg-muted text-brown-muted ring-border',
+  SATISFIED: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
+  WAITING_FEEDBACK: 'bg-amber-100 text-amber-800 ring-amber-200',
+  FOLLOW_UP_REQUIRED: 'bg-yellow-brand/15 text-yellow-dark ring-yellow-brand/30',
+  ISSUE_REPORTED: 'bg-crimson/10 text-crimson ring-crimson/25',
+}
+
+function formatFollowUpStatus(status: string) {
+  return status
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 function Field({ label, value }: { label: string; value: unknown }) {
   if (value == null || value === '') return null
   return (
@@ -258,9 +274,23 @@ export function RequestDetailPage() {
           <CardTitle>Follow-up</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Label className="flex items-center gap-2">
+              Follow-up status
+              <span
+                className={[
+                  'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset',
+                  FOLLOW_UP_STYLES[followUpStatus] ?? FOLLOW_UP_STYLES.NONE,
+                ].join(' ')}
+              >
+                {formatFollowUpStatus(followUpStatus)}
+              </span>
+            </Label>
+            <p className="text-xs text-brown/60">Set what happened and add a short internal note.</p>
+          </div>
+
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Follow-up status</Label>
               <Select value={followUpStatus} onValueChange={setFollowUpStatus}>
                 <SelectTrigger>
                   <SelectValue />
@@ -268,24 +298,42 @@ export function RequestDetailPage() {
                 <SelectContent>
                   {FOLLOW_UP_STATUSES.map((s) => (
                     <SelectItem key={s} value={s}>
-                      {s.replace(/_/g, ' ')}
+                      {formatFollowUpStatus(s)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-1.5 md:col-span-2">
               <Label>Follow-up note</Label>
               <Textarea
                 value={followUpNote}
                 onChange={(e) => setFollowUpNote(e.target.value)}
-                placeholder="Customer feedback or follow-up notes"
+                placeholder="Example: Customer confirmed delivery, no issues reported."
+                className="min-h-[120px]"
               />
+              <p className="text-xs text-brown/60">Tip: keep it short—this is for tracking and internal follow-up.</p>
             </div>
           </div>
-          <Button onClick={saveFollowUp} disabled={savingFollowUp}>
-            {savingFollowUp ? 'Saving…' : 'Save follow-up'}
-          </Button>
+
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={savingFollowUp}
+              onClick={() => {
+                setFollowUpStatus(String(request?.followUpStatus || 'NONE'))
+                setFollowUpNote(String(request?.followUpNote || ''))
+              }}
+            >
+              Reset
+            </Button>
+
+            <Button onClick={saveFollowUp} disabled={savingFollowUp}>
+              {savingFollowUp ? 'Saving…' : 'Save follow-up'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
