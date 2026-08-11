@@ -21,7 +21,7 @@ function RedirectToLogin() {
 }
 
 export function ProtectedRoute() {
-  const { loading } = useAuth()
+  const { loading, admin } = useAuth()
 
   if (!getToken()) {
     return <RedirectToLogin />
@@ -33,6 +33,10 @@ export function ProtectedRoute() {
         Loading admin…
       </div>
     )
+  }
+
+  if (!admin?.id) {
+    return <RedirectToLogin />
   }
 
   return <Outlet />

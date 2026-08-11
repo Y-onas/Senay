@@ -32,17 +32,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .me()
       .then((profile) => {
         if (!cancelled) {
+          if (!profile?.id || !profile?.email) {
+            clearToken()
+            markAuthFailed()
+            setAdmin(null)
+            return
+          }
           clearAuthFailed()
           setAdmin(profile)
         }
       })
       .catch((error) => {
         if (!cancelled) {
-          if (error instanceof ApiError && error.status === 401) {
-            clearToken()
-            markAuthFailed()
-          }
+          clearToken()
+          markAuthFailed()
           setAdmin(null)
+          if (!(error instanceof ApiError && error.status === 401)) {
+            console.error('[Auth] Session validation failed:', error)
+          }
         }
       })
       .finally(() => {

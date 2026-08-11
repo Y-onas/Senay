@@ -2,6 +2,8 @@ const TOKEN_KEY = "senay_admin_token";
 const ADMIN_KEY = "senay-cms-admin";
 const AUTH_FAILED_KEY = "senay_auth_failed";
 const API_CANDIDATES = ["/api", "/st-hq/api"];
+const LOGIN_URL = `${window.location.origin}/st-hq/login.html`;
+const DASHBOARD_URL = `${window.location.origin}/st-hq/`;
 
 const statusEl = document.getElementById("auth-status");
 const errorEl = document.getElementById("auth-error");
@@ -76,7 +78,7 @@ async function exchangeSession(sessionToken) {
   }
   sessionStorage.removeItem(AUTH_FAILED_KEY);
   setStatus("Signed in — opening dashboard…");
-  window.location.replace("/st-hq/");
+  window.location.replace(DASHBOARD_URL);
 }
 
 async function main() {
@@ -91,7 +93,12 @@ async function main() {
 
     const { Clerk } = await import("https://esm.sh/@clerk/clerk-js@5");
     const clerk = new Clerk(publishableKey);
-    await clerk.load();
+    await clerk.load({
+      signInForceRedirectUrl: LOGIN_URL,
+      signInFallbackRedirectUrl: LOGIN_URL,
+      signUpForceRedirectUrl: LOGIN_URL,
+      signUpFallbackRedirectUrl: LOGIN_URL,
+    });
 
     setStatus("");
 
@@ -103,9 +110,9 @@ async function main() {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(ADMIN_KEY);
         try {
-          await clerk.signOut({ redirectUrl: "/st-hq/login.html" });
+          await clerk.signOut({ redirectUrl: LOGIN_URL });
         } catch {
-          window.location.replace("/st-hq/login.html");
+          window.location.replace(LOGIN_URL);
         }
       });
     }
@@ -132,6 +139,10 @@ async function main() {
     clerk.mountSignIn(document.getElementById("clerk-sign-in"), {
       routing: "hash",
       withSignUp: false,
+      signInForceRedirectUrl: LOGIN_URL,
+      signInFallbackRedirectUrl: LOGIN_URL,
+      signUpForceRedirectUrl: LOGIN_URL,
+      signUpFallbackRedirectUrl: LOGIN_URL,
       appearance: {
         layout: {
           socialButtonsPlacement: "top",
