@@ -119,21 +119,29 @@ async function main() {
 
     const authFailed = sessionStorage.getItem(AUTH_FAILED_KEY) === "1";
 
-    if (authFailed) {
-      setStatus("Your session expired. Please sign in again.");
-      if (clerk.user) {
+    // If Clerk already has a session (including right after Google OAuth returns),
+    // always try to exchange it for a Senay JWT. Do NOT sign out first — that was
+    // wiping the fresh Google session when authFailed was still set from a previous
+    // /admin/auth/me 401, so POST /admin/auth/clerk never ran.
+    if (clerk.user) {
+      try {
+        const sessionToken = await clerk.session?.getToken();
+        if (sessionToken) {
+          await exchangeSession(sessionToken);
+          return;
+        }
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Sign-in failed");
+        setStatus("");
+        sessionStorage.setItem(AUTH_FAILED_KEY, "1");
         try {
           await clerk.signOut();
         } catch {
           /* ignore */
         }
       }
-    } else if (clerk.user) {
-      const sessionToken = await clerk.session?.getToken();
-      if (sessionToken) {
-        await exchangeSession(sessionToken);
-        return;
-      }
+    } else if (authFailed) {
+      setStatus("Your session expired. Please sign in again.");
     }
 
     clerk.mountSignIn(document.getElementById("clerk-sign-in"), {
