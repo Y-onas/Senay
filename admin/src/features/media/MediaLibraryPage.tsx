@@ -34,6 +34,9 @@ export function MediaLibraryPage() {
     mediaApi
       .list(q)
       .then(setItems)
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : 'Could not load media library')
+      })
       .finally(() => setLoading(false))
   }
 

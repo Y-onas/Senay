@@ -2,6 +2,7 @@ import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.js";
 import { ensurePublicSiteImagesImported } from "./lib/import-public-images.js";
+import { migrateLegacyMediaJsonIfNeeded } from "./lib/media-store.js";
 import {
   resolveBotToken,
   resolveWebhookUrl,
@@ -43,7 +44,9 @@ async function bootstrapBotWebhook() {
 
 void bootstrapBotWebhook();
 
-void ensurePublicSiteImagesImported().catch((error) => {
-  const message = error instanceof Error ? error.message : "Media seed failed";
-  console.warn(`Public image import skipped: ${message}`);
-});
+void migrateLegacyMediaJsonIfNeeded()
+  .then(() => ensurePublicSiteImagesImported())
+  .catch((error) => {
+    const message = error instanceof Error ? error.message : "Media seed failed";
+    console.warn(`Media bootstrap skipped: ${message}`);
+  });

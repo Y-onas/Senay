@@ -99,7 +99,8 @@ model Media {
   originalName String
   mimeType     String
   size         Int // bytes
-  url          String // public URL relative to server
+  url          String // public URL (Cloudinary or other CDN)
+  publicId     String? // Cloudinary public_id for delete/overwrite
   type         MediaType @default(IMAGE)
   alt          String?
   caption      String?

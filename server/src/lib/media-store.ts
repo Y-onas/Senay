@@ -1,8 +1,9 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import type { Media as PrismaMedia, MediaType } from "@prisma/client";
+import { prisma } from "./prisma.js";
 
-export type MediaType = "IMAGE" | "VIDEO" | "DOCUMENT";
+export type { MediaType };
 
 export interface MediaRecord {
   id: string;
@@ -18,8 +19,7 @@ export interface MediaRecord {
   updatedAt: string;
 }
 
-const DATA_DIR = join(process.cwd(), "data");
-const STORE_PATH = join(DATA_DIR, "media.json");
+const LEGACY_STORE_PATH = join(process.cwd(), "data", "media.json");
 
 function mediaTypeFromMime(mime: string): MediaType {
   if (mime.startsWith("image/")) return "IMAGE";
@@ -27,25 +27,25 @@ function mediaTypeFromMime(mime: string): MediaType {
   return "DOCUMENT";
 }
 
-async function ensureStore(): Promise<MediaRecord[]> {
-  await mkdir(DATA_DIR, { recursive: true });
-  try {
-    const raw = await readFile(STORE_PATH, "utf-8");
-    const parsed = JSON.parse(raw) as MediaRecord[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-async function saveStore(items: MediaRecord[]): Promise<void> {
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(STORE_PATH, JSON.stringify(items, null, 2), "utf-8");
+function toRecord(row: PrismaMedia): MediaRecord {
+  return {
+    id: row.id,
+    url: row.url,
+    publicId: row.publicId ?? undefined,
+    originalName: row.originalName,
+    mimeType: row.mimeType,
+    type: row.type,
+    alt: row.alt,
+    caption: row.caption,
+    sizeBytes: row.size,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }
 
 export async function listMedia(): Promise<MediaRecord[]> {
-  const items = await ensureStore();
-  return items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const rows = await prisma.media.findMany({ orderBy: { updatedAt: "desc" } });
+  return rows.map(toRecord);
 }
 
 export async function addMedia(input: {
@@ -57,24 +57,20 @@ export async function addMedia(input: {
   alt?: string | null;
   caption?: string | null;
 }): Promise<MediaRecord> {
-  const items = await ensureStore();
-  const now = new Date().toISOString();
-  const record: MediaRecord = {
-    id: randomUUID(),
-    url: input.url,
-    publicId: input.publicId,
-    originalName: input.originalName,
-    mimeType: input.mimeType,
-    type: mediaTypeFromMime(input.mimeType),
-    alt: input.alt ?? null,
-    caption: input.caption ?? null,
-    sizeBytes: input.sizeBytes,
-    createdAt: now,
-    updatedAt: now,
-  };
-  items.unshift(record);
-  await saveStore(items);
-  return record;
+  const row = await prisma.media.create({
+    data: {
+      url: input.url,
+      publicId: input.publicId ?? null,
+      originalName: input.originalName,
+      filename: input.originalName,
+      mimeType: input.mimeType,
+      size: input.sizeBytes ?? 0,
+      type: mediaTypeFromMime(input.mimeType),
+      alt: input.alt ?? null,
+      caption: input.caption ?? null,
+    },
+  });
+  return toRecord(row);
 }
 
 export async function updateMedia(
@@ -85,36 +81,78 @@ export async function updateMedia(
     url?: string;
     mimeType?: string;
     sizeBytes?: number;
+    publicId?: string | null;
   },
 ): Promise<MediaRecord | null> {
-  const items = await ensureStore();
-  const index = items.findIndex((item) => item.id === id);
-  if (index < 0) return null;
-
-  items[index] = {
-    ...items[index],
-    alt: "alt" in patch ? (patch.alt ?? null) : (items[index].alt ?? null),
-    caption:
-      "caption" in patch ? (patch.caption ?? null) : (items[index].caption ?? null),
-    url: patch.url ?? items[index].url,
-    mimeType: patch.mimeType ?? items[index].mimeType,
-    sizeBytes: patch.sizeBytes ?? items[index].sizeBytes,
-    updatedAt: new Date().toISOString(),
-  };
-  await saveStore(items);
-  return items[index];
+  try {
+    const row = await prisma.media.update({
+      where: { id },
+      data: {
+        alt: "alt" in patch ? (patch.alt ?? null) : undefined,
+        caption: "caption" in patch ? (patch.caption ?? null) : undefined,
+        url: patch.url,
+        mimeType: patch.mimeType,
+        size: patch.sizeBytes,
+        publicId: "publicId" in patch ? (patch.publicId ?? null) : undefined,
+      },
+    });
+    return toRecord(row);
+  } catch {
+    return null;
+  }
 }
 
 export async function deleteMedia(id: string): Promise<MediaRecord | null> {
-  const items = await ensureStore();
-  const index = items.findIndex((item) => item.id === id);
-  if (index < 0) return null;
-  const [removed] = items.splice(index, 1);
-  await saveStore(items);
-  return removed;
+  try {
+    const row = await prisma.media.delete({ where: { id } });
+    return toRecord(row);
+  } catch {
+    return null;
+  }
 }
 
 export async function findMediaByOriginalName(name: string): Promise<MediaRecord | undefined> {
-  const items = await ensureStore();
-  return items.find((item) => item.originalName === name);
+  const row = await prisma.media.findFirst({ where: { originalName: name } });
+  return row ? toRecord(row) : undefined;
+}
+
+/** One-time import from legacy data/media.json when the DB table is empty. */
+export async function migrateLegacyMediaJsonIfNeeded(): Promise<number> {
+  const count = await prisma.media.count();
+  if (count > 0) return 0;
+
+  let legacy: MediaRecord[];
+  try {
+    const raw = await readFile(LEGACY_STORE_PATH, "utf-8");
+    const parsed = JSON.parse(raw) as MediaRecord[];
+    legacy = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return 0;
+  }
+
+  if (!legacy.length) return 0;
+
+  let imported = 0;
+  for (const item of legacy) {
+    await prisma.media.create({
+      data: {
+        id: item.id,
+        url: item.url,
+        publicId: item.publicId ?? null,
+        originalName: item.originalName,
+        filename: item.originalName,
+        mimeType: item.mimeType,
+        size: item.sizeBytes ?? 0,
+        type: item.type ?? mediaTypeFromMime(item.mimeType),
+        alt: item.alt ?? null,
+        caption: item.caption ?? null,
+        createdAt: new Date(item.createdAt),
+        updatedAt: new Date(item.updatedAt),
+      },
+    });
+    imported += 1;
+  }
+
+  console.log(`Migrated ${imported} media record(s) from legacy media.json into the database`);
+  return imported;
 }
