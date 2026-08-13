@@ -27,8 +27,13 @@ import { useServiceEnabled } from '@/hooks/useServiceEnabled'
 import PageHero from '@/components/common/PageHero'
 import QuantityStepper from '@/components/common/QuantityStepper'
 import { TextField, TextAreaField } from '@/components/common/FormField'
+import { PickupLocationPicker } from '@/components/common/PickupLocationPicker'
 import { formatPrice } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { DeliveryFeeNotice } from '@/components/common/DeliveryFeeNotice'
+import { useAddisNow } from '@/hooks/useAddisNow'
+import { useFormCopy, fillCopy } from '@/hooks/useFormCopy'
+import { addisDateError, addisDateInputMin } from '@/lib/addisTime'
 
 const ITEM_ICONS: Record<FestivalItemIcon, LucideIcon> = {
   chicken: Drumstick,
@@ -45,6 +50,8 @@ type DrinkChoice = 'tej' | 'berz'
 export default function FestivalPage() {
   const navigate = useNavigate()
   const page = usePageContent('festival')
+  const addisNow = useAddisNow()
+  const copy = useFormCopy('festival')
   const { allowed, loading: serviceLoading } = useServiceEnabled('festival')
   const [packages, setPackages] = useState<FestivalPackage[]>(localFestivalPackages)
   const [prices, setPrices] = useState(() => getFestivalPrices())
@@ -57,6 +64,8 @@ export default function FestivalPage() {
   const [phone, setPhone] = useState('')
   const [deliveryMethod, setDeliveryMethod] =
     useState<CateringDeliveryMethod>('delivery')
+  const [pickupLocationId, setPickupLocationId] = useState<string | null>(null)
+  const [pickupLocationLabel, setPickupLocationLabel] = useState('')
   const [location, setLocation] = useState('')
   const [date, setDate] = useState('')
   const [notes, setNotes] = useState('')
@@ -91,15 +100,22 @@ export default function FestivalPage() {
 
   const validate = () => {
     const next: Record<string, string> = {}
-    if (!selectedId) next.package = 'Select a festival package.'
+    if (!selectedId) next.package = copy.errorPackage
     if (needsDrink && !drinkChoice) {
-      next.drink = 'Choose Tej or Berz for the Grand Package.'
+      next.drink = copy.errorDrink
     }
-    if (!name.trim()) next.name = 'Your name is required.'
-    if (!phone.trim()) next.phone = 'Phone number is required.'
-    if (!date) next.date = 'Choose a preferred date.'
+    if (!name.trim()) next.name = copy.errorName
+    if (!phone.trim()) next.phone = copy.errorPhone
+    if (!date) next.date = copy.errorDate
+    else {
+      const dateErr = addisDateError(date, addisNow)
+      if (dateErr) next.date = dateErr
+    }
     if (deliveryMethod === 'delivery' && !location.trim()) {
-      next.location = 'Enter a delivery address.'
+      next.location = copy.errorAddress
+    }
+    if (deliveryMethod === 'pickup' && !pickupLocationId) {
+      next.pickupLocation = copy.errorPickupLocation
     }
     setErrors(next)
     return Object.keys(next).length === 0
@@ -135,9 +151,9 @@ export default function FestivalPage() {
         deliveryMethod,
         date,
         location:
-          deliveryMethod === 'delivery'
-            ? location.trim()
-            : 'Pickup at Senay Tela',
+          deliveryMethod === 'delivery' ? location.trim() : pickupLocationLabel,
+        pickupLocationId: deliveryMethod === 'pickup' ? pickupLocationId : undefined,
+        pickupLocation: deliveryMethod === 'pickup' ? pickupLocationLabel : undefined,
         notes: notes.trim() || undefined,
         contact: { name: name.trim(), phone: phone.trim() },
       }
@@ -195,10 +211,10 @@ export default function FestivalPage() {
               </span>
               <div>
                 <h2 className="font-display text-xl font-bold uppercase text-[#2C1A14]">
-                  Choose your package
+                  {copy.choosePackage}
                 </h2>
                 <p className="text-sm text-[#2C1A14]/55">
-                  Click a card to select — click again to deselect. Compare what’s included side by side.
+                  {copy.choosePackageHint}
                 </p>
               </div>
             </div>
@@ -315,10 +331,10 @@ export default function FestivalPage() {
                         {isSelected ? (
                           <>
                             <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                            Selected
+                            {copy.selected}
                           </>
                         ) : (
-                          'Select package'
+                          copy.selectPackage
                         )}
                       </span>
                     </div>
@@ -339,10 +355,10 @@ export default function FestivalPage() {
               </span>
               <div>
                 <h2 className="font-display text-xl font-bold uppercase text-[#2C1A14]">
-                  Your order details
+                  {copy.orderDetailsTitle}
                 </h2>
                 <p className="text-sm text-[#2C1A14]/55">
-                  Confirm quantity and how you’d like your festival package delivered.
+                  {copy.detailsHint}
                 </p>
               </div>
             </div>
@@ -352,13 +368,13 @@ export default function FestivalPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-[#2C1A14]/40">
-                      Selected package
+                      {copy.selectedPackage}
                     </p>
                     <p className="font-display text-lg font-bold uppercase text-[#2C1A14]">
                       {selected.name}
                     </p>
                     <p className="mt-1 text-sm text-[#2C1A14]/55">
-                      {formatPrice(unitPrice)} each
+                      {fillCopy(copy.eachPrice, { price: formatPrice(unitPrice) })}
                     </p>
                   </div>
                   <div
@@ -366,7 +382,7 @@ export default function FestivalPage() {
                     onKeyDown={(e) => e.stopPropagation()}
                   >
                     <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#2C1A14]/40">
-                      Quantity
+                      {copy.quantity}
                     </p>
                     <QuantityStepper
                       value={qty}
@@ -381,7 +397,7 @@ export default function FestivalPage() {
                 {needsDrink && (
                   <div className="mt-4 border-t border-[#2C1A14]/8 pt-4">
                     <p className="mb-2 text-sm font-medium text-[#2C1A14]">
-                      Choose your drink (2 L)
+                      {copy.chooseDrink}
                     </p>
                     {errors.drink && (
                       <p className="mb-2 text-sm text-destructive">{errors.drink}</p>
@@ -399,7 +415,7 @@ export default function FestivalPage() {
                               : 'border-[#2C1A14]/20 bg-white text-[#2C1A14]/70',
                           )}
                         >
-                          {opt === 'tej' ? 'Tej' : 'Berz'}
+                          {opt === 'tej' ? copy.tej : copy.berz}
                         </button>
                       ))}
                     </div>
@@ -407,7 +423,7 @@ export default function FestivalPage() {
                 )}
 
                 <div className="mt-4 flex justify-between border-t border-[#2C1A14]/8 pt-4">
-                  <span className="text-sm text-[#2C1A14]/55">Order total</span>
+                  <span className="text-sm text-[#2C1A14]/55">{copy.orderTotal}</span>
                   <span className="font-display text-2xl font-bold text-[#931F1D]">
                     {formatPrice(grandTotal)}
                   </span>
@@ -415,13 +431,13 @@ export default function FestivalPage() {
               </div>
             ) : (
               <p className="mb-6 rounded-2xl border border-dashed border-[#2C1A14]/20 bg-white px-5 py-8 text-center text-sm text-[#2C1A14]/55">
-                Select a package above to continue.
+                {copy.selectToContinue}
               </p>
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <TextField
-                label="Customer name"
+                label={copy.customerName}
                 name="name"
                 required
                 value={name}
@@ -429,7 +445,7 @@ export default function FestivalPage() {
                 onChange={(e) => setName(e.target.value)}
               />
               <TextField
-                label="Phone number"
+                label={copy.phoneNumber}
                 name="phone"
                 type="tel"
                 required
@@ -442,7 +458,7 @@ export default function FestivalPage() {
 
             <div className="mt-5">
               <p className="mb-2 text-sm font-medium text-[#2C1A14]">
-                Delivery or Pickup
+                {copy.fulfillmentOr}
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -455,7 +471,7 @@ export default function FestivalPage() {
                       : 'border-[#2C1A14]/20 bg-white text-[#2C1A14]/70',
                   )}
                 >
-                  Pickup
+                  {copy.selfPickup}
                 </button>
                 <button
                   type="button"
@@ -467,29 +483,46 @@ export default function FestivalPage() {
                       : 'border-[#2C1A14]/20 bg-white text-[#2C1A14]/70',
                   )}
                 >
-                  Delivery
+                  {copy.delivery}
                 </button>
               </div>
+              {deliveryMethod === 'pickup' && (
+                <PickupLocationPicker
+                  className="mt-3"
+                  value={pickupLocationId}
+                  onChange={(loc) => {
+                    setPickupLocationId(loc.id)
+                    setPickupLocationLabel(
+                      loc.area ? `${loc.name} · ${loc.area}` : loc.name,
+                    )
+                  }}
+                  error={errors.pickupLocation}
+                />
+              )}
+              {deliveryMethod === 'delivery' && (
+                <DeliveryFeeNotice className="mt-3" />
+              )}
             </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               {deliveryMethod === 'delivery' && (
                 <TextField
-                  label="Delivery address"
+                  label={copy.deliveryAddress}
                   name="location"
                   required
                   value={location}
                   error={errors.location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Address in Addis Ababa"
+                  placeholder={copy.deliveryAddressPlaceholder}
                   className="sm:col-span-2"
                 />
               )}
               <TextField
-                label="Preferred delivery / pickup date"
+                label={copy.preferredDate}
                 name="date"
                 type="date"
                 required
+                min={addisDateInputMin(addisNow)}
                 value={date}
                 error={errors.date}
                 onChange={(e) => setDate(e.target.value)}
@@ -498,12 +531,12 @@ export default function FestivalPage() {
 
             <TextAreaField
               className="mt-4"
-              label="Additional notes"
+              label={copy.additionalNotes}
               name="notes"
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Special requests for your celebration…"
+              placeholder={copy.notesPlaceholder}
             />
 
             <button
@@ -514,10 +547,10 @@ export default function FestivalPage() {
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Submitting…
+                  {copy.submitting}
                 </>
               ) : (
-                'Submit Order'
+                copy.submitOrder
               )}
             </button>
           </div>

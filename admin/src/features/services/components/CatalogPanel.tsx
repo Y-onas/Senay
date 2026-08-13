@@ -1,9 +1,9 @@
 import { Package, Pencil, Plus, Trash2 } from 'lucide-react'
 import { type CatalogItem } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { CatalogItemThumb } from '@/features/services/components/CatalogItemThumb'
+import { CollapsibleServiceSection } from '@/features/services/components/CollapsibleServiceSection'
 
 export function CatalogPanel({
   title,
@@ -15,6 +15,7 @@ export function CatalogPanel({
   onEdit,
   onDelete,
   getSubtitle,
+  defaultOpen = false,
 }: {
   title: string
   description?: string
@@ -25,25 +26,27 @@ export function CatalogPanel({
   onEdit: (item: CatalogItem) => void
   onDelete: (id: string) => void
   getSubtitle?: (item: CatalogItem) => string
+  defaultOpen?: boolean
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-        <div>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-burgundy/10 text-burgundy">
-              <Package className="h-4 w-4" />
-            </span>
-            {title}
-          </CardTitle>
-          {description ? <p className="mt-1 text-sm text-brown-muted">{description}</p> : null}
-        </div>
+    <CollapsibleServiceSection
+      title={title}
+      description={description}
+      count={items.length}
+      defaultOpen={defaultOpen}
+      icon={
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-burgundy/10 text-burgundy">
+          <Package className="h-4 w-4" />
+        </span>
+      }
+      headerAction={
         <Button onClick={onAdd} className="shrink-0 gap-2">
           <Plus className="h-4 w-4" />
           {addLabel}
         </Button>
-      </CardHeader>
-      <CardContent className="space-y-2">
+      }
+    >
+      <div className="space-y-2">
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-muted/20 py-12 text-center">
             <Plus className="h-8 w-8 text-brown-muted/40" strokeWidth={1.5} />
@@ -74,9 +77,7 @@ export function CatalogPanel({
                     <span
                       className={cn(
                         'rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                        item.available
-                          ? 'bg-green-brand/12 text-green-brand'
-                          : 'bg-muted text-brown-muted',
+                        item.available ? 'bg-green-brand/12 text-green-brand' : 'bg-muted text-brown-muted',
                       )}
                     >
                       {item.available ? 'Available' : 'Hidden'}
@@ -106,7 +107,7 @@ export function CatalogPanel({
             )
           })
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </CollapsibleServiceSection>
   )
 }

@@ -31,24 +31,37 @@ import { useServiceEnabled } from '@/hooks/useServiceEnabled'
 import PageHero from '@/components/common/PageHero'
 import QuantityStepper from '@/components/common/QuantityStepper'
 import { TextField, TextAreaField } from '@/components/common/FormField'
+import { PickupLocationPicker } from '@/components/common/PickupLocationPicker'
+import { formatFulfillmentLabel } from '@/lib/fulfillment'
 import { formatPrice } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { withTelegramSearch } from '@/lib/telegramWebApp'
+import { useAddisNow } from '@/hooks/useAddisNow'
+import { useFormCopy, fillCopy } from '@/hooks/useFormCopy'
+import {
+  addisDateError,
+  addisDateInputMin,
+  addisTimeError,
+  addisTimeInputMin,
+} from '@/lib/addisTime'
 
-const instructionChips = [
-  'No salt',
-  'Less spicy',
-  'No berbere',
-  'Extra vegan options',
-  'Mild for kids',
-  'No butter',
-  'Separate plates',
-]
+const CATERING_CHIP_KEYS = [
+  'chipNoSalt',
+  'chipLessSpicy',
+  'chipNoBerbere',
+  'chipExtraVegan',
+  'chipMildForKids',
+  'chipNoButter',
+  'chipSeparatePlates',
+] as const
 
 export default function CateringPage() {
   const navigate = useNavigate()
   const { search } = useLocation()
   const { locale } = useLanguage()
+  const copy = useFormCopy('catering')
+  const instructionChips = CATERING_CHIP_KEYS.map((key) => copy[key])
+  const addisNow = useAddisNow()
   const page = usePageContent('catering')
   const { allowed, loading: serviceLoading } = useServiceEnabled('catering')
   const [catalog, setCatalog] = useState<CateringCatalogPackage[]>([
@@ -102,6 +115,8 @@ export default function CateringPage() {
     useState<CateringBeverageOption>('food-only')
   const [deliveryMethod, setDeliveryMethod] =
     useState<CateringDeliveryMethod | null>(null)
+  const [pickupLocationId, setPickupLocationId] = useState<string | null>(null)
+  const [pickupLocationLabel, setPickupLocationLabel] = useState('')
   const [time, setTime] = useState('')
   const [instructions, setInstructions] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -136,7 +151,10 @@ export default function CateringPage() {
   const mealDone = !!mealType
   const packageDone = !!packageId
   const beverageDone = packageDone && !!beverageOption
-  const deliveryDone = !!deliveryMethod && !!time
+  const deliveryDone =
+    !!deliveryMethod &&
+    !!time &&
+    (deliveryMethod === 'delivery' || !!pickupLocationId)
   const showSummary = deliveryDone
 
   useEffect(() => {
@@ -188,21 +206,32 @@ export default function CateringPage() {
   const validate = () => {
     const next: Record<string, string> = {}
     if (guests < CATERING_MIN_GUESTS) {
-      next.guests = `Minimum ${CATERING_MIN_GUESTS} guests required.`
+      next.guests = fillCopy(copy.errorMinGuests, { count: CATERING_MIN_GUESTS })
     }
-    if (!date) next.date = 'Please choose a date.'
-    if (!location.trim()) next.location = 'Where is the event?'
-    if (!name.trim()) next.name = 'Your name, please.'
-    if (!phone.trim()) next.phone = 'A phone number is required.'
-    if (!eventType) next.eventType = 'Please choose an occasion.'
+    if (!date) next.date = copy.errorDate
+    else {
+      const dateErr = addisDateError(date, addisNow)
+      if (dateErr) next.date = dateErr
+    }
+    if (!location.trim()) next.location = copy.errorLocation
+    if (!name.trim()) next.name = copy.errorName
+    if (!phone.trim()) next.phone = copy.errorPhone
+    if (!eventType) next.eventType = copy.errorOccasion
     if (eventType === 'other' && !customOccasion.trim()) {
-      next.customOccasion = 'Please tell us about your occasion.'
+      next.customOccasion = copy.errorCustomOccasion
     }
-    if (!mealType) next.mealType = 'Please select a meal type.'
-    if (!packageId) next.packageId = 'Please choose a package.'
-    if (!beverageOption) next.beverage = 'Please choose a beverage option.'
-    if (!deliveryMethod) next.deliveryMethod = 'Please choose pickup or delivery.'
-    if (!time) next.time = 'Please choose a time.'
+    if (!mealType) next.mealType = copy.errorMealType
+    if (!packageId) next.packageId = copy.errorPackage
+    if (!beverageOption) next.beverage = copy.errorBeverage
+    if (!deliveryMethod) next.deliveryMethod = copy.errorDeliveryMethod
+    if (deliveryMethod === 'pickup' && !pickupLocationId) {
+      next.pickupLocation = copy.errorPickupLocation
+    }
+    if (!time) next.time = copy.errorTime
+    else {
+      const timeErr = addisTimeError(date, time, addisNow)
+      if (timeErr) next.time = timeErr
+    }
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -226,6 +255,8 @@ export default function CateringPage() {
       date,
       time,
       location: location.trim(),
+      pickupLocationId: deliveryMethod === 'pickup' ? pickupLocationId ?? undefined : undefined,
+      pickupLocation: deliveryMethod === 'pickup' ? pickupLocationLabel || undefined : undefined,
       contact: { name: name.trim(), phone: phone.trim() },
       specialInstructions: instructions.trim() || undefined,
     }
@@ -263,55 +294,60 @@ export default function CateringPage() {
             {/* 1 — Essentials (guests + date + place + name + phone) */}
             <SectionCard
               step={1}
-              title="The essentials"
-              description="These are what we need to get started."
+              title={copy.essentialsTitle}
+              description={copy.essentialsDescription}
             >
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-gray-700">
-                    Number of guests<span className="ml-0.5 text-burgundy">*</span>
+                    {copy.guestsLabel}<span className="ml-0.5 text-burgundy">*</span>
                   </label>
                   <div className="flex items-center gap-3">
                     <QuantityStepper
                       value={guests}
                       min={CATERING_MIN_GUESTS}
-                      step={5}
+                      step={1}
                       onChange={setGuests}
                     />
                     <span className="flex items-center gap-1 text-sm text-gray-400">
-                      <Users className="h-4 w-4" /> people
+                      <Users className="h-4 w-4" /> {copy.peopleSuffix}
                     </span>
                   </div>
                   {guests < CATERING_MIN_GUESTS && (
                     <p className="mt-1 text-xs text-destructive">
-                      Minimum {CATERING_MIN_GUESTS} guests.
+                      {fillCopy(copy.guestsMinHint, { count: CATERING_MIN_GUESTS })}
                     </p>
                   )}
                 </div>
 
                 <TextField
-                  label="Event date"
+                  label={copy.eventDate}
                   name="date"
                   type="date"
                   required
+                  min={addisDateInputMin(addisNow)}
                   value={date}
                   error={errors.date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => {
+                    const nextDate = e.target.value
+                    setDate(nextDate)
+                    if (time && addisTimeError(nextDate, time, addisNow)) setTime('')
+                  }}
                 />
 
                 <TextField
-                  label="Event location / place"
+                  label={copy.eventLocation}
                   name="location"
                   required
                   value={location}
                   error={errors.location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Venue or address in Addis Ababa"
+                  placeholder={copy.eventLocationPlaceholder}
                   className="sm:col-span-2"
                 />
 
                 <TextField
-                  label="Your name"
+                  label={copy.yourName}
                   name="name"
                   required
                   value={name}
@@ -320,7 +356,7 @@ export default function CateringPage() {
                 />
 
                 <TextField
-                  label="Phone number"
+                  label={copy.phoneNumber}
                   name="phone"
                   type="tel"
                   required
@@ -333,14 +369,14 @@ export default function CateringPage() {
 
               {!essentialsDone && (
                 <p className="mt-4 text-sm text-gray-500">
-                  Fill every field above — the next step will appear automatically.
+                  {copy.essentialsHint}
                 </p>
               )}
             </SectionCard>
 
             {/* 2 — Occasion (pops in) */}
             <Reveal show={essentialsDone} sectionRef={occasionRef}>
-              <SectionCard step={2} title="What's the occasion?">
+              <SectionCard step={2} title={copy.occasionTitle}>
                 <div className="flex flex-wrap gap-2">
                   {occasions.map((o) => (
                     <ChoiceChip
@@ -356,11 +392,11 @@ export default function CateringPage() {
                 {eventType === 'other' && (
                   <TextField
                     className="mt-4"
-                    label="Please tell us about your occasion."
+                    label={copy.customOccasionLabel}
                     name="customOccasion"
                     value={customOccasion}
                     onChange={(e) => setCustomOccasion(e.target.value)}
-                    placeholder="e.g. Housewarming, Anniversary…"
+                    placeholder={copy.customOccasionPlaceholder}
                     error={errors.customOccasion}
                   />
                 )}
@@ -371,22 +407,22 @@ export default function CateringPage() {
             <Reveal show={occasionDone} sectionRef={mealRef}>
               <SectionCard
                 step={3}
-                title="Select Meal Type"
-                description="This determines which packages you can choose."
+                title={copy.mealTypeTitle}
+                description={copy.mealTypeDescription}
               >
                 <div className="grid gap-3 sm:grid-cols-2">
                   <RadioCard
                     active={mealType === 'fasting'}
-                    title="Fasting"
-                    subtitle="ጾም"
-                    description="One complete vegan package (ማእድ ጾም)."
+                    title={copy.fastingTitle}
+                    subtitle={copy.fastingSubtitle}
+                    description={copy.fastingDescription}
                     onClick={() => selectMealType('fasting')}
                   />
                   <RadioCard
                     active={mealType === 'non-fasting'}
-                    title="Non-Fasting"
-                    subtitle="ፍስክ"
-                    description="Platinum, Gold, or Silver celebration packages."
+                    title={copy.nonFastingTitle}
+                    subtitle={copy.nonFastingSubtitle}
+                    description={copy.nonFastingDescription}
                     onClick={() => selectMealType('non-fasting')}
                   />
                 </div>
@@ -399,14 +435,15 @@ export default function CateringPage() {
                 step={4}
                 title={
                   mealType === 'fasting'
-                    ? 'Maed Fasting (ማእድ ጾም)'
-                    : 'Choose Your Package'
+                    ? copy.packageTitleFasting
+                    : copy.packageTitleNonFasting
                 }
-                description="Every dish is already included — you do not pick individual dishes."
+                description={copy.packageDescription}
               >
                 {mealType === 'fasting' && defaultFasting && (
                   <div className="mx-auto w-full max-w-md sm:max-w-sm">
                     <PackageCard
+                      copy={copy}
                       pkg={defaultFasting}
                       active
                       featured
@@ -418,6 +455,7 @@ export default function CateringPage() {
                   <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4">
                     {nonFastingPkgs.map((pkg) => (
                       <PackageCard
+                        copy={copy}
                         key={pkg.id}
                         pkg={pkg}
                         active={packageId === pkg.id}
@@ -434,8 +472,8 @@ export default function CateringPage() {
             <Reveal show={packageDone} sectionRef={beverageRef}>
               <SectionCard
                 step={5}
-                title="Would you like to include traditional beverages?"
-                description="Select one option — totals update in the estimate panel."
+                title={copy.beveragesTitle}
+                description={copy.beveragesDescription}
               >
                 <div className="space-y-2">
                   {beverages.map((opt) => {
@@ -460,7 +498,7 @@ export default function CateringPage() {
                         <span className="shrink-0 font-display text-lg font-bold text-burgundy">
                           {formatPrice(pp)}
                           <span className="ml-1 text-xs font-normal text-gray-400">
-                            /person
+                            {copy.perPerson}
                           </span>
                         </span>
                       </button>
@@ -470,36 +508,59 @@ export default function CateringPage() {
               </SectionCard>
             </Reveal>
 
-            {/* 6 — Pickup / Delivery + time */}
+            {/* 6 — Self Pickup / Delivery + time */}
             <Reveal show={beverageDone} sectionRef={deliveryRef}>
               <SectionCard
                 step={6}
-                title="How would you like to receive your order?"
-                description={`Event date: ${date || '—'} · Place: ${location || '—'}`}
+                title={copy.fulfillmentTitle}
+                description={fillCopy(copy.fulfillmentMeta, {
+                  date: date || '—',
+                  place: location || '—',
+                })}
               >
                 <div className="mb-5 flex flex-wrap gap-2">
                   <ChoiceChip
                     active={deliveryMethod === 'pickup'}
                     onClick={() => setDeliveryMethod('pickup')}
                   >
-                    Pickup
+                    {copy.selfPickup}
                   </ChoiceChip>
                   <ChoiceChip
                     active={deliveryMethod === 'delivery'}
                     onClick={() => setDeliveryMethod('delivery')}
                   >
-                    Delivery
+                    {copy.delivery}
                   </ChoiceChip>
                 </div>
+
+                {deliveryMethod === 'pickup' && (
+                  <PickupLocationPicker
+                    className="mb-4"
+                    value={pickupLocationId}
+                    onChange={(loc) => {
+                      setPickupLocationId(loc.id)
+                      setPickupLocationLabel(
+                        loc.area ? `${loc.name} · ${loc.area}` : loc.name,
+                      )
+                      setErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.pickupLocation
+                        return next
+                      })
+                    }}
+                    error={errors.pickupLocation}
+                  />
+                )}
 
                 {deliveryMethod && (
                   <TextField
                     label={
-                      deliveryMethod === 'delivery' ? 'Delivery time' : 'Pickup time'
+                      deliveryMethod === 'delivery' ? copy.deliveryTime : copy.pickupTime
                     }
                     name="time"
                     type="time"
                     required
+                    min={addisTimeInputMin(date, addisNow)}
                     value={time}
                     error={errors.time}
                     onChange={(e) => setTime(e.target.value)}
@@ -512,16 +573,16 @@ export default function CateringPage() {
             <Reveal show={deliveryDone} sectionRef={requestsRef}>
               <SectionCard
                 step={7}
-                title="Special requests"
-                description="Dietary notes, spice level, and anything we should know for the kitchen."
+                title={copy.specialRequestsTitle}
+                description={copy.specialRequestsDescription}
               >
                 <TextAreaField
-                  label="Tell us anything we should know"
+                  label={copy.specialRequestsLabel}
                   name="instructions"
                   rows={4}
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
-                  placeholder="e.g. no salt, less spicy, mild for kids…"
+                  placeholder={copy.specialRequestsPlaceholder}
                 />
                 <div className="mt-3 flex flex-wrap gap-2">
                   {instructionChips.map((chip) => {
@@ -544,47 +605,53 @@ export default function CateringPage() {
 
             {/* 8 — Summary + confirm */}
             <Reveal show={showSummary} sectionRef={summaryRef}>
-              <SectionCard step={8} title="Order Summary">
+              <SectionCard step={8} title={copy.orderSummary}>
                 {selectedPackage && eventType && mealType && deliveryMethod && (
                   <dl className="mb-6 space-y-3 rounded-2xl bg-cream-warm p-5 text-sm">
-                    <SummaryRow label="Guests" value={String(guests)} />
+                    <SummaryRow label={copy.summaryGuests} value={String(guests)} />
                     <SummaryRow
-                      label="Occasion"
+                      label={copy.summaryOccasion}
                       value={getOccasionLabel(eventType, customOccasion)}
                     />
                     <SummaryRow
-                      label="Meal Type"
+                      label={copy.summaryMealType}
                       value={
-                        mealType === 'fasting' ? 'Fasting (ጾም)' : 'Non-Fasting (ፍስክ)'
+                        mealType === 'fasting' ? copy.mealTypeFastingValue : copy.mealTypeNonFastingValue
                       }
                     />
                     <SummaryRow
-                      label="Package"
+                      label={copy.summaryPackage}
                       value={`${selectedPackage.nameAm} · ${selectedPackage.name}`}
                     />
                     <SummaryRow
-                      label="Beverage"
+                      label={copy.summaryBeverage}
                       value={getBeverageLabel(beverageOption)}
                     />
                     <SummaryRow
-                      label="Price / person"
+                      label={copy.summaryPricePerPerson}
                       value={formatPrice(pricePerGuest)}
                     />
                     <SummaryRow
-                      label="Total"
+                      label={copy.summaryTotal}
                       value={`${guests} × ${formatPrice(pricePerGuest)} = ${formatPrice(totalPrice)}`}
                       highlight
                     />
                     <SummaryRow
-                      label="Fulfillment"
-                      value={deliveryMethod === 'delivery' ? 'Delivery' : 'Pickup'}
+                      label={copy.summaryFulfillment}
+                      value={formatFulfillmentLabel(deliveryMethod, {
+                        pickup: copy.selfPickup,
+                        delivery: copy.delivery,
+                      })}
                     />
-                    <SummaryRow label="Date" value={date} />
-                    <SummaryRow label="Time" value={time} />
-                    <SummaryRow label="Place" value={location} />
-                    <SummaryRow label="Contact" value={`${name} · ${phone}`} />
+                    {deliveryMethod === 'pickup' && pickupLocationLabel ? (
+                      <SummaryRow label={copy.pickupLocation} value={pickupLocationLabel} />
+                    ) : null}
+                    <SummaryRow label={copy.summaryDate} value={date} />
+                    <SummaryRow label={copy.summaryTime} value={time} />
+                    <SummaryRow label={copy.summaryPlace} value={location} />
+                    <SummaryRow label={copy.summaryContact} value={`${name} · ${phone}`} />
                     {instructions.trim() && (
-                      <SummaryRow label="Special requests" value={instructions} />
+                      <SummaryRow label={copy.summarySpecialRequests} value={instructions} />
                     )}
                   </dl>
                 )}
@@ -597,10 +664,10 @@ export default function CateringPage() {
                   {submitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Confirming…
+                      {copy.confirming}
                     </>
                   ) : (
-                    'Confirm Booking'
+                    copy.confirmBooking
                   )}
                 </button>
               </SectionCard>
@@ -611,6 +678,7 @@ export default function CateringPage() {
           <aside className="hidden lg:block">
             <div className="sticky top-24 z-30">
               <EstimatePanel
+                copy={copy}
                 guests={guests}
                 selectedPackage={selectedPackage}
                 beverageLabel={
@@ -628,12 +696,12 @@ export default function CateringPage() {
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[#E8B838]">
-                Your estimate
+                {copy.yourEstimate}
               </p>
               <p className="text-xs text-[#FAF5EE]/70">
                 {selectedPackage
                   ? `${guests} × ${formatPrice(pricePerGuest)}`
-                  : 'Fill the form to see total'}
+                  : copy.fillFormToSeeTotal}
               </p>
             </div>
             <p className="font-display text-2xl font-bold text-[#E8B838]">
@@ -653,12 +721,14 @@ function scrollToSection(ref: React.RefObject<HTMLDivElement | null>) {
 }
 
 function EstimatePanel({
+  copy,
   guests,
   selectedPackage,
   beverageLabel,
   pricePerGuest,
   totalPrice,
 }: {
+  copy: Record<string, string>
   guests: number
   selectedPackage: CateringCatalogPackage | undefined
   beverageLabel: string
@@ -668,29 +738,29 @@ function EstimatePanel({
   return (
     <div className="rounded-3xl border border-[#E8B838]/35 bg-[#2C1A14] p-6 text-[#FAF5EE] shadow-xl shadow-[#2C1A14]/30">
       <p className="text-xs font-semibold uppercase tracking-wider text-[#E8B838]">
-        Your estimate
+        {copy.yourEstimate}
       </p>
-      <p className="mt-1 text-sm text-[#FAF5EE]/65">Guests × price per person</p>
+      <p className="mt-1 text-sm text-[#FAF5EE]/65">{copy.estimateFormula}</p>
 
       <div className="mt-5 space-y-2 border-b border-[#FAF5EE]/15 pb-5 text-sm">
         <div className="flex justify-between text-[#FAF5EE]/70">
-          <span>Guests</span>
+          <span>{copy.summaryGuests}</span>
           <span className="font-medium text-[#FAF5EE]">{guests}</span>
         </div>
         <div className="flex justify-between text-[#FAF5EE]/70">
-          <span>Package</span>
+          <span>{copy.summaryPackage}</span>
           <span className="max-w-[55%] text-right font-medium text-[#FAF5EE]">
             {selectedPackage?.nameAm ?? '—'}
           </span>
         </div>
         <div className="flex justify-between text-[#FAF5EE]/70">
-          <span>Beverage</span>
+          <span>{copy.summaryBeverage}</span>
           <span className="font-medium text-[#FAF5EE]">
             {selectedPackage ? beverageLabel : '—'}
           </span>
         </div>
         <div className="flex justify-between text-[#FAF5EE]/70">
-          <span>Per person</span>
+          <span>{copy.estimatePerPerson}</span>
           <span className="font-medium text-[#FAF5EE]">
             {pricePerGuest ? formatPrice(pricePerGuest) : '—'}
           </span>
@@ -701,7 +771,7 @@ function EstimatePanel({
         <p className="text-xs text-[#FAF5EE]/55">
           {selectedPackage
             ? `${guests} × ${formatPrice(pricePerGuest)}`
-            : 'Complete the steps to see total'}
+            : copy.completeStepsToSeeTotal}
         </p>
         <p className="mt-1 font-display text-3xl font-bold text-[#E8B838]">
           {selectedPackage ? formatPrice(totalPrice) : '—'}
@@ -826,11 +896,13 @@ function RadioCard({
 }
 
 function PackageCard({
+  copy,
   pkg,
   active,
   featured,
   onSelect,
 }: {
+  copy: Record<string, string>
   pkg: CateringCatalogPackage
   active: boolean
   featured?: boolean
@@ -855,7 +927,7 @@ function PackageCard({
       >
         {featured && !active && (
           <span className="absolute right-3 top-3 z-10 rounded-full bg-[#E8B838] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#2C1A14]">
-            Popular
+            {copy.popular}
           </span>
         )}
 
@@ -917,7 +989,7 @@ function PackageCard({
                   active ? 'text-[#FAF5EE]/50' : 'text-[#2C1A14]/40',
                 )}
               >
-                /person
+                {copy.perPerson}
               </span>
             </p>
 
@@ -929,7 +1001,7 @@ function PackageCard({
                   : 'bg-[#2C1A14] text-[#FAF5EE]',
               )}
             >
-              {active ? 'Selected' : 'Tap to select'}
+              {active ? copy.selected : copy.tapToSelect}
             </span>
           </div>
         </button>
@@ -948,7 +1020,7 @@ function PackageCard({
               active ? 'text-[#E8B838]' : 'text-[#2C1A14]/70',
             )}
           >
-            <span>{menuOpen ? 'Hide menu' : `See menu · ${pkg.dishes.length} dishes`}</span>
+            <span>{menuOpen ? copy.hideMenu : fillCopy(copy.seeMenu, { count: pkg.dishes.length })}</span>
             <span className="text-sm">{menuOpen ? '−' : '+'}</span>
           </button>
 
@@ -991,7 +1063,7 @@ function PackageCard({
       >
         {featured && !active && (
           <span className="absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-[#E8B838] px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#2C1A14] shadow">
-            Most popular
+            {copy.popular}
           </span>
         )}
 
@@ -1050,7 +1122,7 @@ function PackageCard({
                 active ? 'text-[#FAF5EE]/55' : 'text-[#2C1A14]/40',
               )}
             >
-              per person
+              {copy.estimatePerPerson}
             </p>
           </div>
 
@@ -1083,7 +1155,7 @@ function PackageCard({
                 : 'bg-[#2C1A14] text-[#FAF5EE]',
             )}
           >
-            {active ? 'Selected' : 'Select package'}
+            {active ? copy.selected : copy.selectPackage}
           </span>
         </div>
       </button>

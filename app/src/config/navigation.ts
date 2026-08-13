@@ -46,6 +46,6 @@ export const offeringPages: Record<
     description:
       'House-fermented tela and tej, brewed by our team and served from the clay pot — smoky, golden, and unmistakably Ethiopian.',
     body:
-      'Order by the bottle or berele for pickup and delivery across Addis Ababa. Every batch is brewed in-house — never bought, always fresh.',
+      'Order by the bottle or berele for self pickup and delivery across Addis Ababa. Every batch is brewed in-house — never bought, always fresh.',
   },
 }

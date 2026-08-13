@@ -110,6 +110,26 @@ const ui = {
     en: 'All rights reserved.',
     am: 'ሁሉም መብቶች የተጠበቁ ናቸው።',
   },
+  deliveryFeeNoticeTitle: { en: 'Important Notice', am: 'ማሳሰቢያ' },
+  deliveryFeeNoticeBody: {
+    en: 'An additional delivery fee applies to this order. The delivery fee will be added to your order.',
+    am: 'ለዚህ ትዕዛዝ ተጨማሪ የማድረሻ ክፍያ የሚታሰብ ሲሆን አጠቃላይ ሂሳብዎ ላይ የሚደመር ይሆናል።',
+  },
+  selfPickup: { en: 'Self Pickup', am: 'በራስ መውሰድ' },
+  pickupLocation: { en: 'Pickup location', am: 'የመውሰጃ ቦታ' },
+  pickupLocationHint: {
+    en: 'Choose the location that is most convenient or closest to you.',
+    am: 'ለእርስዎ የሚመች ወይም የቀረበውን ቦታ ይምረጡ።',
+  },
+  pickupLocationRequired: {
+    en: 'Please choose a pickup location.',
+    am: 'እባክዎ የመውሰጃ ቦታ ይምረጡ።',
+  },
+  pickupLocationEmpty: {
+    en: 'No pickup locations are available right now. Please choose delivery or contact us.',
+    am: 'በአሁኑ ሰዓት የመውሰጃ ቦታ የለም። እባክዎ መላክን ይምረጡ ወይም ያግኙን።',
+  },
+  pickupLocationLoading: { en: 'Loading locations…', am: 'ቦታዎች በመጫን ላይ…' },
 } as const
 
 export type UiKey = keyof typeof ui

@@ -15,6 +15,7 @@ import {
   type AgelgilPriceTable,
 } from '@/data/agelgilCatalog'
 import type { MealType } from '@/types'
+import type { FormCopyValues } from '@/lib/formCopy'
 import {
   fastingPackage,
   nonFastingPackages,
@@ -309,6 +310,24 @@ export async function getCateringOccasionsFromApi(): Promise<CateringOccasionOpt
     label: o.label,
     emoji: o.emoji,
   }))
+}
+
+export async function getFormCopyFromApi(slug: string): Promise<FormCopyValues> {
+  try {
+    if (USE_MOCK) return {}
+    const { items } = await getServiceCatalog(slug)
+    const item = items.find(
+      (i) =>
+        i.kind === 'CONFIG' &&
+        (i.slug === 'form-copy' || i.metadata?.catalogRole === 'formCopy'),
+    )
+    const raw = item?.metadata?.fields
+    if (!raw || typeof raw !== 'object') return {}
+    return raw as FormCopyValues
+  } catch (e) {
+    console.warn(`Form copy ${slug} fallback to defaults`, e)
+    return {}
+  }
 }
 
 export async function getCateringBeveragesFromApi(): Promise<CateringBeverageOptionItem[]> {

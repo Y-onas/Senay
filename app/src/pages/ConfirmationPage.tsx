@@ -6,6 +6,8 @@ import { formatComboLabel } from '@/data/agelgilCatalog'
 import { formatPrice } from '@/lib/format'
 import { restaurant } from '@/data/restaurant'
 import { isTelegramWebApp } from '@/lib/telegramWebApp'
+import { DeliveryFeeNotice, isDeliveryMethod } from '@/components/common/DeliveryFeeNotice'
+import { formatFulfillmentLabel, isPickupMethod } from '@/lib/fulfillment'
 
 type AgelgilConfirmation = {
   reference: string
@@ -19,6 +21,7 @@ type AgelgilConfirmation = {
   date: string
   time: string
   location: string
+  pickupLocation?: string
 }
 
 type BaltinaConfirmation = {
@@ -35,6 +38,7 @@ type BaltinaConfirmation = {
   deliveryMethod: string
   date: string
   location: string
+  pickupLocation?: string
 }
 
 type FestivalConfirmation = {
@@ -49,6 +53,7 @@ type FestivalConfirmation = {
   deliveryMethod: string
   date: string
   location: string
+  pickupLocation?: string
 }
 
 type ConfirmationState =
@@ -59,6 +64,31 @@ type ConfirmationState =
   | { kind: 'drinks'; request: BaltinaConfirmation }
   | { kind: 'festival'; request: FestivalConfirmation }
   | undefined
+
+function FulfillmentDetails({
+  method,
+  pickupLocation,
+}: {
+  method?: string | null
+  pickupLocation?: string | null
+}) {
+  return (
+    <>
+      <div className="flex justify-between gap-3">
+        <span className="text-gray-500">Fulfillment</span>
+        <span className="font-medium text-gray-900">{formatFulfillmentLabel(method)}</span>
+      </div>
+      {isPickupMethod(method) && pickupLocation ? (
+        <div className="flex justify-between gap-3">
+          <span className="text-gray-500">Pickup location</span>
+          <span className="max-w-[60%] text-right font-medium text-gray-900">
+            {pickupLocation}
+          </span>
+        </div>
+      ) : null}
+    </>
+  )
+}
 
 export default function ConfirmationPage() {
   const { state, search } = useLocation()
@@ -86,6 +116,7 @@ export default function ConfirmationPage() {
   const isBaltina = data.kind === 'baltina'
   const isDrinks = data.kind === 'drinks'
   const isFestival = data.kind === 'festival'
+  const isCatering = data.kind === 'catering'
   const reference = isOrder
     ? data.order.reference
     : data.request.reference
@@ -114,6 +145,9 @@ export default function ConfirmationPage() {
             : 'Back to catering'
   const preservedSearch = new URLSearchParams(search).toString()
   const secondaryHref = telegram && preservedSearch ? `${secondaryTo}?${preservedSearch}` : secondaryTo
+  const showDeliveryFeeNotice =
+    !isCatering &&
+    isDeliveryMethod(isOrder ? data.order.fulfillment : data.request.deliveryMethod)
 
   return (
     <section className="flex min-h-screen items-center justify-center bg-burgundy px-4 pb-16 pt-28">
@@ -165,12 +199,13 @@ export default function ConfirmationPage() {
                 {formatPrice(data.request.grandTotal)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Fulfillment</span>
-              <span className="font-medium capitalize text-gray-900">
-                {data.request.deliveryMethod}
-              </span>
-            </div>
+            <FulfillmentDetails
+              method={data.request.deliveryMethod}
+              pickupLocation={
+                data.request.pickupLocation ||
+                (isPickupMethod(data.request.deliveryMethod) ? data.request.location : undefined)
+              }
+            />
           </div>
         )}
 
@@ -202,12 +237,13 @@ export default function ConfirmationPage() {
                 {formatPrice(data.request.grandTotal)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Fulfillment</span>
-              <span className="font-medium capitalize text-gray-900">
-                {data.request.deliveryMethod}
-              </span>
-            </div>
+            <FulfillmentDetails
+              method={data.request.deliveryMethod}
+              pickupLocation={
+                data.request.pickupLocation ||
+                (isPickupMethod(data.request.deliveryMethod) ? data.request.location : undefined)
+              }
+            />
           </div>
         )}
 
@@ -229,12 +265,13 @@ export default function ConfirmationPage() {
                 {formatPrice(data.request.grandTotal)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Fulfillment</span>
-              <span className="font-medium capitalize text-gray-900">
-                {data.request.deliveryMethod}
-              </span>
-            </div>
+            <FulfillmentDetails
+              method={data.request.deliveryMethod}
+              pickupLocation={
+                data.request.pickupLocation ||
+                (isPickupMethod(data.request.deliveryMethod) ? data.request.location : undefined)
+              }
+            />
           </div>
         )}
 
@@ -250,12 +287,13 @@ export default function ConfirmationPage() {
                 {formatPrice(data.request.totalPrice)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Fulfillment</span>
-              <span className="font-medium capitalize text-gray-900">
-                {data.request.deliveryMethod}
-              </span>
-            </div>
+            <FulfillmentDetails
+              method={data.request.deliveryMethod}
+              pickupLocation={
+                data.request.pickupLocation ||
+                (isPickupMethod(data.request.deliveryMethod) ? data.request.location : undefined)
+              }
+            />
           </div>
         )}
 
@@ -267,12 +305,10 @@ export default function ConfirmationPage() {
                 {formatPrice(data.order.total, data.order.currency)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Fulfillment</span>
-              <span className="font-medium capitalize text-gray-900">
-                {data.order.fulfillment}
-              </span>
-            </div>
+            <FulfillmentDetails
+              method={data.order.fulfillment}
+              pickupLocation={data.order.customer.address}
+            />
             <div className="flex justify-between">
               <span className="text-gray-500">Payment</span>
               <span className="font-medium text-gray-900">
@@ -288,6 +324,8 @@ export default function ConfirmationPage() {
             )}
           </div>
         )}
+
+        {showDeliveryFeeNotice ? <DeliveryFeeNotice className="mt-6" /> : null}
 
         <div className="mt-8 flex flex-col items-center gap-3">
           <a

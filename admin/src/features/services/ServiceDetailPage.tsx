@@ -14,6 +14,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { CatalogPanel } from '@/features/services/components/CatalogPanel'
+import { CollapsibleServiceSection } from '@/features/services/components/CollapsibleServiceSection'
 import { FieldGroup } from '@/features/services/components/FieldGroup'
 import { ServiceImage } from '@/features/services/components/ServiceImage'
 import {
@@ -34,6 +35,8 @@ import { isDrinksSlug, isFestivalSlug } from '@/features/services/service-helper
 import { AgelgilEditor } from '@/features/services/editors/AgelgilEditor'
 import { BaltinaProductEditor } from '@/features/services/editors/BaltinaProductEditor'
 import { CateringLabelsEditor } from '@/features/services/editors/CateringLabelsEditor'
+import { FormCopyEditor } from '@/features/services/editors/FormCopyEditor'
+import { isFormCopyItem } from '@/features/services/form-copy-schema'
 import { CateringPackageEditor } from '@/features/services/editors/CateringPackageEditor'
 import { DrinksProductEditor } from '@/features/services/editors/DrinksProductEditor'
 import { FestivalPackageEditor } from '@/features/services/editors/FestivalPackageEditor'
@@ -208,21 +211,23 @@ export function ServiceDetailPage() {
     [items],
   )
   const agelgilConfig = useMemo(
-    () => items.find((item) => item.slug === 'pricing' || item.kind === 'CONFIG') ?? null,
+    () => items.find((item) => item.slug === 'pricing') ?? null,
     [items],
   )
+  const formCopyItem = useMemo(() => items.find((item) => isFormCopyItem(item)) ?? null, [items])
   const otherItems = useMemo(() => {
     if (isCatering) {
       return items.filter(
         (item) =>
           item.kind !== 'PACKAGE' &&
+          !isFormCopyItem(item) &&
           !(item.kind === 'CONFIG' && (item.metadata?.catalogRole === 'occasion' || item.metadata?.catalogRole === 'beverage')),
       )
     }
-    if (isBaltina) return items.filter((item) => item.kind !== 'PRODUCT')
-    if (isDrinks) return items.filter((item) => item.kind !== 'PRODUCT')
-    if (isFestival) return items.filter((item) => item.kind !== 'PACKAGE')
-    return []
+    if (isBaltina) return items.filter((item) => item.kind !== 'PRODUCT' && !isFormCopyItem(item))
+    if (isDrinks) return items.filter((item) => item.kind !== 'PRODUCT' && !isFormCopyItem(item))
+    if (isFestival) return items.filter((item) => item.kind !== 'PACKAGE' && !isFormCopyItem(item))
+    return items.filter((item) => !isFormCopyItem(item))
   }, [items, isBaltina, isCatering, isDrinks, isFestival])
 
   const heroSummary = isCatering
@@ -458,6 +463,13 @@ export function ServiceDetailPage() {
         </Card>
       ) : null}
 
+      <FormCopyEditor
+        serviceId={service.id}
+        serviceSlug={service.slug}
+        item={formCopyItem}
+        onRefresh={refresh}
+      />
+
       {isCatering ? (
         <>
           <CateringLabelsEditor
@@ -603,13 +615,12 @@ export function ServiceDetailPage() {
       ) : null}
 
       {isAgelgil ? (
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-            <div>
-              <CardTitle className="text-lg">Agelgil pricing</CardTitle>
-              <p className="mt-1 text-sm text-brown-muted">Price table and dish lists for each package type.</p>
-            </div>
-            {agelgilConfig ? (
+        <CollapsibleServiceSection
+          title="Agelgil pricing"
+          description="Price table and dish lists for each package type."
+          count={agelgilConfig ? 1 : 0}
+          headerAction={
+            agelgilConfig ? (
               <Button
                 className="gap-2"
                 onClick={() => setPanel({ action: 'edit', kind: 'agelgil', item: agelgilConfig })}
@@ -622,31 +633,30 @@ export function ServiceDetailPage() {
                 <Plus className="h-4 w-4" />
                 {creatingAgelgil ? 'Creating…' : 'Create config'}
               </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            {agelgilConfig ? (
-              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-4">
-                <div className="min-w-0 flex-1">
-                  <p className="font-display font-bold text-burgundy">{agelgilConfig.name}</p>
-                  <p className="text-sm text-brown-muted">{agelgilConfig.description || 'Pricing & menus ready'}</p>
-                </div>
-                <Button
-                  variant="secondary"
-                  onClick={() => setPanel({ action: 'edit', kind: 'agelgil', item: agelgilConfig })}
-                  className="gap-1.5"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Open editor
-                </Button>
+            )
+          }
+        >
+          {agelgilConfig ? (
+            <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 p-4">
+              <div className="min-w-0 flex-1">
+                <p className="font-display font-bold text-burgundy">{agelgilConfig.name}</p>
+                <p className="text-sm text-brown-muted">{agelgilConfig.description || 'Pricing & menus ready'}</p>
               </div>
-            ) : (
-              <p className="text-sm text-brown-muted">
-                No pricing config yet. Create one to control Agelgil prices on the website.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+              <Button
+                variant="secondary"
+                onClick={() => setPanel({ action: 'edit', kind: 'agelgil', item: agelgilConfig })}
+                className="gap-1.5"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Open editor
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-brown-muted">
+              No pricing config yet. Create one to control Agelgil prices on the website.
+            </p>
+          )}
+        </CollapsibleServiceSection>
       ) : null}
 
       {!isCatering && !isBaltina && !isDrinks && !isFestival && !isAgelgil ? (
@@ -654,7 +664,7 @@ export function ServiceDetailPage() {
           title="Catalog items"
           description="Products, packages, and configs for this service."
           addLabel="Add item"
-          items={items}
+          items={otherItems}
           emptyLabel="No catalog items yet."
           onAdd={() => setPanel({ action: 'create', kind: 'generic' })}
           onEdit={(item) => setPanel({ action: 'edit', kind: 'generic', item })}

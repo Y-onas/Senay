@@ -22,6 +22,8 @@ import { formatPrice, formatQuantity } from '@/lib/format'
 import PageHero from '@/components/common/PageHero'
 import FoodVisual from '@/components/common/FoodVisual'
 import { TextField, TextAreaField } from '@/components/common/FormField'
+import { DeliveryFeeNotice } from '@/components/common/DeliveryFeeNotice'
+import { PickupLocationPicker } from '@/components/common/PickupLocationPicker'
 import { cn } from '@/lib/utils'
 
 const DELIVERY_FEE = 150
@@ -31,6 +33,8 @@ export default function CheckoutPage() {
   const { items, subtotal, clear } = useCart()
 
   const [fulfillment, setFulfillment] = useState<FulfillmentMethod>('delivery')
+  const [pickupLocationId, setPickupLocationId] = useState<string | null>(null)
+  const [pickupLocationLabel, setPickupLocationLabel] = useState('')
   const [payment, setPayment] = useState<PaymentMethod>('chapa')
   const [form, setForm] = useState({
     name: '',
@@ -64,6 +68,8 @@ export default function CheckoutPage() {
     if (!form.phone.trim()) next.phone = 'A phone number is required.'
     if (fulfillment === 'delivery' && !form.address.trim())
       next.address = 'A delivery address is required.'
+    if (fulfillment === 'pickup' && !pickupLocationId)
+      next.pickupLocation = 'Please choose a pickup location.'
     if (payment === 'bank_transfer' && !proofData)
       next.proof = 'Please upload your transfer receipt.'
     setErrors(next)
@@ -87,7 +93,8 @@ export default function CheckoutPage() {
       customer: {
         name: form.name,
         phone: form.phone,
-        address: fulfillment === 'delivery' ? form.address : undefined,
+        address:
+          fulfillment === 'delivery' ? form.address : pickupLocationLabel || undefined,
         email: form.email || undefined,
         notes: form.notes || undefined,
       },
@@ -158,7 +165,7 @@ export default function CheckoutPage() {
             {/* Fulfillment */}
             <div className="rounded-3xl bg-white p-6 shadow-sm sm:p-8">
               <h2 className="font-display text-xl font-bold uppercase text-gray-900">
-                1. Delivery or pickup
+                1. Delivery or self pickup
               </h2>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <FulfillmentOption
@@ -166,16 +173,37 @@ export default function CheckoutPage() {
                   onClick={() => setFulfillment('delivery')}
                   Icon={Truck}
                   title="Delivery"
-                  desc={`We bring it to you · ${formatPrice(DELIVERY_FEE)}`}
+                  desc="We bring it to you"
                 />
                 <FulfillmentOption
                   active={fulfillment === 'pickup'}
                   onClick={() => setFulfillment('pickup')}
                   Icon={Store}
-                  title="Pickup"
-                  desc="Collect at our restaurant · Free"
+                  title="Self Pickup"
+                  desc="Collect at a Senay Tela location · Free"
                 />
               </div>
+              {fulfillment === 'pickup' && (
+                <PickupLocationPicker
+                  className="mt-5"
+                  value={pickupLocationId}
+                  onChange={(loc) => {
+                    setPickupLocationId(loc.id)
+                    setPickupLocationLabel(
+                      loc.area ? `${loc.name} · ${loc.area}` : loc.name,
+                    )
+                    setErrors((prev) => {
+                      const next = { ...prev }
+                      delete next.pickupLocation
+                      return next
+                    })
+                  }}
+                  error={errors.pickupLocation}
+                />
+              )}
+              {fulfillment === 'delivery' && (
+                <DeliveryFeeNotice className="mt-5" />
+              )}
             </div>
 
             {/* Customer info */}
@@ -371,7 +399,7 @@ export default function CheckoutPage() {
                   <span>{formatPrice(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-gray-500">
-                  <span>{fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</span>
+                  <span>{fulfillment === 'delivery' ? 'Delivery' : 'Self Pickup'}</span>
                   <span>{deliveryFee ? formatPrice(deliveryFee) : 'Free'}</span>
                 </div>
                 <div className="flex justify-between border-t border-burgundy/10 pt-2 font-display text-lg font-bold text-gray-900">

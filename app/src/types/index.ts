@@ -186,6 +186,8 @@ export interface CateringRequestDraft {
   date: string
   time: string
   location: string
+  pickupLocationId?: string
+  pickupLocation?: string
   contact: CustomerInfo
   specialInstructions?: string
 }

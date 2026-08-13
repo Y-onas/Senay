@@ -76,9 +76,18 @@ function formatMoney(value: unknown, currency = 'ETB') {
 
 function formatShortDate(value: unknown) {
   if (!value) return '—'
-  const d = new Date(String(value))
-  if (Number.isNaN(d.getTime())) return String(value)
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  const raw = String(value)
+  const dateOnly = /^\d{4}-\d{2}-\d{2}/.exec(raw)?.[0]
+  const d = dateOnly
+    ? new Date(`${dateOnly}T12:00:00+03:00`)
+    : new Date(raw)
+  if (Number.isNaN(d.getTime())) return raw
+  return d.toLocaleDateString('en-GB', {
+    timeZone: 'Africa/Addis_Ababa',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 function relativeFromNow(value: unknown) {

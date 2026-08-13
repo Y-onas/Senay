@@ -41,7 +41,7 @@ export default function ShopPage() {
       <PageHero
         eyebrow="Shop"
         title="Order traditional products"
-        description="Fresh tela and tej by the liter, stone-ground spices by the kilo. Delivered across Addis Ababa or ready for pickup."
+        description="Fresh tela and tej by the liter, stone-ground spices by the kilo. Delivered across Addis Ababa or ready for self pickup."
         crumbs={[{ label: 'Home', to: '/' }, { label: 'Shop' }]}
       />
 

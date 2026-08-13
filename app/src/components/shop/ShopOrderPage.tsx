@@ -5,8 +5,13 @@ import type { CateringDeliveryMethod } from '@/types'
 import PageHero from '@/components/common/PageHero'
 import QuantityStepper from '@/components/common/QuantityStepper'
 import { TextField, TextAreaField } from '@/components/common/FormField'
+import { PickupLocationPicker } from '@/components/common/PickupLocationPicker'
 import { formatPrice } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { DeliveryFeeNotice } from '@/components/common/DeliveryFeeNotice'
+import { useAddisNow } from '@/hooks/useAddisNow'
+import { useFormCopy, fillCopy } from '@/hooks/useFormCopy'
+import { addisDateError, addisDateInputMin } from '@/lib/addisTime'
 import type { ServiceSlug } from '@/services/requestService'
 
 export type ShopOrderKind = 'baltina' | 'drinks'
@@ -22,10 +27,6 @@ function shopKindToServiceSlug(kind: string): ServiceSlug {
     throw new Error(`Unknown shop order kind: ${kind}`)
   }
   return serviceSlug
-}
-
-function localIsoDate(date = new Date()): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 export interface ShopProduct {
@@ -71,6 +72,10 @@ export default function ShopOrderPage({
   detailsHint,
 }: ShopOrderPageProps) {
   const navigate = useNavigate()
+  const addisNow = useAddisNow()
+  const copy = useFormCopy(kind)
+  const searchText = copy.searchPlaceholder || searchPlaceholder
+  const detailsText = copy.detailsHint || detailsHint
 
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('all')
@@ -80,6 +85,8 @@ export default function ShopOrderPage({
   const [phone, setPhone] = useState('')
   const [deliveryMethod, setDeliveryMethod] =
     useState<CateringDeliveryMethod>('delivery')
+  const [pickupLocationId, setPickupLocationId] = useState<string | null>(null)
+  const [pickupLocationLabel, setPickupLocationLabel] = useState('')
   const [location, setLocation] = useState('')
   const [date, setDate] = useState('')
   const [notes, setNotes] = useState('')
@@ -87,7 +94,7 @@ export default function ShopOrderPage({
   const [submitting, setSubmitting] = useState(false)
 
   const orderAnchorId = `${kind}-order`
-  const minDate = localIsoDate()
+  const minDate = addisDateInputMin(addisNow)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -127,13 +134,19 @@ export default function ShopOrderPage({
 
   const validate = () => {
     const next: Record<string, string> = {}
-    if (!lines.length) next.products = 'Select at least one product.'
-    if (!name.trim()) next.name = 'Your name is required.'
-    if (!phone.trim()) next.phone = 'Phone number is required.'
-    if (!date) next.date = 'Choose a preferred date.'
-    else if (date < minDate) next.date = 'Choose today or a future date.'
+    if (!lines.length) next.products = copy.errorProducts
+    if (!name.trim()) next.name = copy.errorName
+    if (!phone.trim()) next.phone = copy.errorPhone
+    if (!date) next.date = copy.errorDate
+    else {
+      const dateErr = addisDateError(date, addisNow)
+      if (dateErr) next.date = dateErr
+    }
     if (deliveryMethod === 'delivery' && !location.trim()) {
-      next.location = 'Enter a delivery address.'
+      next.location = copy.errorAddress
+    }
+    if (deliveryMethod === 'pickup' && !pickupLocationId) {
+      next.pickupLocation = copy.errorPickupLocation
     }
     setErrors(next)
     return Object.keys(next).length === 0
@@ -160,7 +173,7 @@ export default function ShopOrderPage({
       )
       const serviceSlug = shopKindToServiceSlug(kind)
       const resolvedLocation =
-        deliveryMethod === 'delivery' ? location.trim() : 'Pickup at Senay Tela'
+        deliveryMethod === 'delivery' ? location.trim() : pickupLocationLabel
       const orderDetails = {
         items: lines.map((l) => ({
           id: l.product.id,
@@ -174,6 +187,8 @@ export default function ShopOrderPage({
         deliveryMethod,
         date,
         location: resolvedLocation,
+        pickupLocationId: deliveryMethod === 'pickup' ? pickupLocationId : undefined,
+        pickupLocation: deliveryMethod === 'pickup' ? pickupLocationLabel : undefined,
         notes: notes.trim() || undefined,
         contact: { name: name.trim(), phone: phone.trim() },
       }
@@ -201,7 +216,7 @@ export default function ShopOrderPage({
       })
     } catch {
       setErrors({
-        submit: 'Could not submit your order. Please try again.',
+        submit: copy.errorSubmit,
       })
     } finally {
       setSubmitting(false)
@@ -231,10 +246,10 @@ export default function ShopOrderPage({
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2C1A14]/40" />
                 <input
                   type="search"
-                  aria-label={searchPlaceholder}
+                  aria-label={searchText}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={searchPlaceholder}
+                  placeholder={searchText}
                   className="w-full rounded-full border border-[#2C1A14]/15 bg-white py-3 pl-10 pr-4 text-sm text-[#2C1A14] outline-none transition-colors placeholder:text-[#2C1A14]/40 focus:border-[#E8B838]"
                 />
               </div>
@@ -266,10 +281,10 @@ export default function ShopOrderPage({
               </span>
               <div>
                 <h2 className="font-display text-xl font-bold uppercase text-[#2C1A14]">
-                  Choose your products
+                  {copy.chooseProducts}
                 </h2>
                 <p className="text-sm text-[#2C1A14]/55">
-                  Use the Add and Remove buttons to build your order.
+                  {copy.chooseProductsHint}
                 </p>
               </div>
             </div>
@@ -302,7 +317,7 @@ export default function ShopOrderPage({
                       />
                       {selected && (
                         <span className="absolute left-3 top-3 rounded-full bg-[#E8B838] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#2C1A14]">
-                          In order
+                          {copy.inOrder}
                         </span>
                       )}
                     </div>
@@ -321,7 +336,7 @@ export default function ShopOrderPage({
                             {formatPrice(product.price)}
                           </p>
                           <p className="text-[10px] uppercase tracking-wider text-[#2C1A14]/40">
-                            per {product.unit}
+                            {fillCopy(copy.perUnit, { unit: product.unit })}
                           </p>
                         </div>
 
@@ -344,7 +359,7 @@ export default function ShopOrderPage({
                           className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-[#931F1D]/30 bg-white py-2.5 text-xs font-semibold text-[#931F1D] transition-colors hover:bg-[#931F1D] hover:text-white"
                         >
                           <X className="h-3.5 w-3.5" strokeWidth={2.5} />
-                          Remove
+                          {copy.remove}
                         </button>
                       ) : (
                         <button
@@ -352,7 +367,7 @@ export default function ShopOrderPage({
                           onClick={() => setQty(product, product.minQty)}
                           className="mt-3 w-full rounded-full bg-[#2C1A14] py-2.5 text-xs font-semibold text-[#FAF5EE] transition-colors hover:bg-[#E8B838] hover:text-[#2C1A14]"
                         >
-                          Add
+                          {copy.add}
                         </button>
                       )}
                     </div>
@@ -363,7 +378,7 @@ export default function ShopOrderPage({
 
             {filtered.length === 0 && (
               <p className="rounded-2xl border border-dashed border-[#2C1A14]/20 bg-[#FAF5EE] px-6 py-10 text-center text-sm text-[#2C1A14]/55">
-                No products match your search. Try another keyword or category.
+                {copy.noMatch}
               </p>
             )}
 
@@ -378,15 +393,15 @@ export default function ShopOrderPage({
                 </span>
                 <div>
                   <h2 className="font-display text-xl font-bold uppercase text-[#2C1A14]">
-                    Your order details
+                    {copy.orderDetailsTitle}
                   </h2>
-                  <p className="text-sm text-[#2C1A14]/55">{detailsHint}</p>
+                  <p className="text-sm text-[#2C1A14]/55">{detailsText}</p>
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <TextField
-                  label="Customer name"
+                  label={copy.customerName}
                   name="name"
                   required
                   value={name}
@@ -394,7 +409,7 @@ export default function ShopOrderPage({
                   onChange={(e) => setName(e.target.value)}
                 />
                 <TextField
-                  label="Phone number"
+                  label={copy.phoneNumber}
                   name="phone"
                   type="tel"
                   required
@@ -407,7 +422,7 @@ export default function ShopOrderPage({
 
               <div className="mt-5">
                 <p className="mb-2 text-sm font-medium text-[#2C1A14]">
-                  Delivery or Pickup
+                  {copy.fulfillmentOr}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -420,7 +435,7 @@ export default function ShopOrderPage({
                         : 'border-[#2C1A14]/20 bg-white text-[#2C1A14]/70',
                     )}
                   >
-                    Pickup
+                    {copy.selfPickup}
                   </button>
                   <button
                     type="button"
@@ -432,26 +447,42 @@ export default function ShopOrderPage({
                         : 'border-[#2C1A14]/20 bg-white text-[#2C1A14]/70',
                     )}
                   >
-                    Delivery
+                    {copy.delivery}
                   </button>
                 </div>
+                {deliveryMethod === 'pickup' && (
+                  <PickupLocationPicker
+                    className="mt-3"
+                    value={pickupLocationId}
+                    onChange={(loc) => {
+                      setPickupLocationId(loc.id)
+                      setPickupLocationLabel(
+                        loc.area ? `${loc.name} · ${loc.area}` : loc.name,
+                      )
+                    }}
+                    error={errors.pickupLocation}
+                  />
+                )}
+                {deliveryMethod === 'delivery' && (
+                  <DeliveryFeeNotice className="mt-3" />
+                )}
               </div>
 
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 {deliveryMethod === 'delivery' && (
                   <TextField
-                    label="Delivery address"
+                    label={copy.deliveryAddress}
                     name="location"
                     required
                     value={location}
                     error={errors.location}
                     onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Address in Addis Ababa"
+                    placeholder={copy.deliveryAddressPlaceholder}
                     className="sm:col-span-2"
                   />
                 )}
                 <TextField
-                  label="Preferred delivery / pickup date"
+                  label={copy.preferredDate}
                   name="date"
                   type="date"
                   required
@@ -464,17 +495,18 @@ export default function ShopOrderPage({
 
               <TextAreaField
                 className="mt-4"
-                label="Additional notes"
+                label={copy.additionalNotes}
                 name="notes"
                 rows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Allergies, packaging preferences, etc."
+                placeholder={copy.notesPlaceholder}
               />
 
               {/* Mobile summary inside form */}
               <div className="mt-6 rounded-2xl bg-[#2C1A14] p-5 text-[#FAF5EE] lg:hidden">
                 <OrderSummaryLines
+                  copy={copy}
                   lines={lines}
                   grandTotal={grandTotal}
                   onRemove={(p) => setQty(p, 0)}
@@ -489,10 +521,10 @@ export default function ShopOrderPage({
                 {submitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Submitting…
+                    {copy.submitting}
                   </>
                 ) : (
-                  'Submit Order'
+                  copy.submitOrder
                 )}
               </button>
               {errors.submit ? (
@@ -510,10 +542,11 @@ export default function ShopOrderPage({
                 <div className="flex items-center gap-2">
                   <ShoppingBag className="h-4 w-4 text-[#E8B838]" />
                   <p className="text-xs font-semibold uppercase tracking-wider text-[#E8B838]">
-                    Order summary
+                    {copy.orderSummary}
                   </p>
                 </div>
                 <OrderSummaryLines
+                  copy={copy}
                   lines={lines}
                   grandTotal={grandTotal}
                   onRemove={(p) => setQty(p, 0)}
@@ -522,7 +555,7 @@ export default function ShopOrderPage({
                   href={`#${orderAnchorId}`}
                   className="mt-5 block rounded-full bg-[#E8B838] py-3 text-center text-sm font-semibold text-[#2C1A14] transition-colors hover:bg-[#F0C85A]"
                 >
-                  Complete order details
+                  {copy.completeDetails}
                 </a>
               </div>
             </div>
@@ -534,12 +567,12 @@ export default function ShopOrderPage({
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[#E8B838]">
-                {lines.length ? `${lines.length} product(s)` : 'No products yet'}
+                {lines.length ? fillCopy(copy.productsCount, { count: lines.length }) : copy.noProductsYet}
               </p>
               <p className="text-xs text-[#FAF5EE]/70">
                 {itemCount
-                  ? `${itemCount} ${mobileUnit} selected`
-                  : 'Tap Add on a product'}
+                  ? fillCopy(copy.itemsSelected, { count: itemCount, unit: mobileUnit })
+                  : copy.tapAdd}
               </p>
             </div>
             <p className="font-display text-2xl font-bold text-[#E8B838]">
@@ -553,10 +586,12 @@ export default function ShopOrderPage({
 }
 
 function OrderSummaryLines({
+  copy,
   lines,
   grandTotal,
   onRemove,
 }: {
+  copy: Record<string, string>
   lines: { product: ShopProduct; qty: number; lineTotal: number }[]
   grandTotal: number
   onRemove?: (product: ShopProduct) => void
@@ -564,7 +599,7 @@ function OrderSummaryLines({
   if (!lines.length) {
     return (
       <p className="mt-4 text-sm text-[#FAF5EE]/65">
-        Select products from the shop to build your order.
+        {copy.emptySummary}
       </p>
     )
   }
@@ -597,7 +632,7 @@ function OrderSummaryLines({
         ))}
       </ul>
       <div className="mt-4 flex justify-between font-display text-xl font-bold">
-        <span>Total</span>
+        <span>{copy.summaryTotal}</span>
         <span className="text-[#E8B838]">{formatPrice(grandTotal)}</span>
       </div>
     </>

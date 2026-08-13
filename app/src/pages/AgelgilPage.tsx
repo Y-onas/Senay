@@ -20,12 +20,25 @@ import { usePageContent } from '@/hooks/usePageContent'
 import { useServiceEnabled } from '@/hooks/useServiceEnabled'
 import QuantityStepper from '@/components/common/QuantityStepper'
 import { TextField } from '@/components/common/FormField'
+import { PickupLocationPicker } from '@/components/common/PickupLocationPicker'
+import { formatFulfillmentLabel } from '@/lib/fulfillment'
 import { formatPrice } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { DeliveryFeeNotice } from '@/components/common/DeliveryFeeNotice'
+import { useAddisNow } from '@/hooks/useAddisNow'
+import { useFormCopy, fillCopy } from '@/hooks/useFormCopy'
+import {
+  addisDateError,
+  addisDateInputMin,
+  addisTimeError,
+  addisTimeInputMin,
+} from '@/lib/addisTime'
 
 export default function AgelgilPage() {
   const navigate = useNavigate()
   const page = usePageContent('agelgil')
+  const addisNow = useAddisNow()
+  const copy = useFormCopy('agelgil')
   const { allowed, loading: serviceLoading } = useServiceEnabled('agelgil')
   const [prices, setPrices] = useState(() => getAgelgilPrices())
   const [menus, setMenus] = useState(agelgilMenus)
@@ -46,6 +59,8 @@ export default function AgelgilPage() {
   const [guestsConfirmed, setGuestsConfirmed] = useState(false)
   const [deliveryMethod, setDeliveryMethod] =
     useState<CateringDeliveryMethod | null>(null)
+  const [pickupLocationId, setPickupLocationId] = useState<string | null>(null)
+  const [pickupLocationLabel, setPickupLocationLabel] = useState('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [location, setLocation] = useState('')
@@ -68,7 +83,7 @@ export default function AgelgilPage() {
     !!deliveryMethod &&
     !!date &&
     !!time &&
-    (deliveryMethod === 'pickup' || location.trim().length > 0)
+    (deliveryMethod === 'delivery' ? location.trim().length > 0 : !!pickupLocationId)
 
   const combo = useMemo(() => {
     if (!mealType || !packageKind || guests < 1) return []
@@ -103,18 +118,29 @@ export default function AgelgilPage() {
 
   const validate = () => {
     const next: Record<string, string> = {}
-    if (!mealType) next.mealType = 'Select meal type.'
-    if (!packageKind) next.packageKind = 'Select Regular or Special.'
-    if (!preferredSize) next.size = 'Choose a package size.'
-    if (guests < 10) next.guests = 'Minimum 10 people.'
-    if (!deliveryMethod) next.delivery = 'Choose pickup or delivery.'
-    if (!date) next.date = 'Choose a date.'
-    if (!time) next.time = 'Choose a time.'
-    if (deliveryMethod === 'delivery' && !location.trim()) {
-      next.location = 'Enter a delivery address.'
+    if (!mealType) next.mealType = copy.errorMealType
+    if (!packageKind) next.packageKind = copy.errorPackageKind
+    if (!preferredSize) next.size = copy.errorSize
+    if (guests < 10) next.guests = copy.errorMinGuests
+    if (!deliveryMethod) next.delivery = copy.errorDeliveryMethod
+    if (!date) next.date = copy.errorDate
+    else {
+      const dateErr = addisDateError(date, addisNow)
+      if (dateErr) next.date = dateErr
     }
-    if (!name.trim()) next.name = 'Your name is required.'
-    if (!phone.trim()) next.phone = 'Phone number is required.'
+    if (!time) next.time = copy.errorTime
+    else {
+      const timeErr = addisTimeError(date, time, addisNow)
+      if (timeErr) next.time = timeErr
+    }
+    if (deliveryMethod === 'delivery' && !location.trim()) {
+      next.location = copy.errorAddress
+    }
+    if (deliveryMethod === 'pickup' && !pickupLocationId) {
+      next.pickupLocation = copy.errorPickupLocation
+    }
+    if (!name.trim()) next.name = copy.errorName
+    if (!phone.trim()) next.phone = copy.errorPhone
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -140,9 +166,9 @@ export default function AgelgilPage() {
         date,
         time,
         location:
-          deliveryMethod === 'delivery'
-            ? location.trim()
-            : 'Pickup at Senay Tela',
+          deliveryMethod === 'delivery' ? location.trim() : pickupLocationLabel,
+        pickupLocationId: deliveryMethod === 'pickup' ? pickupLocationId : undefined,
+        pickupLocation: deliveryMethod === 'pickup' ? pickupLocationLabel : undefined,
         contact: { name: name.trim(), phone: phone.trim() },
       }
       const created = await submitServiceRequest({
@@ -197,22 +223,22 @@ export default function AgelgilPage() {
             {/* 1 — Meal type */}
             <SectionCard
               step={1}
-              title="Select Meal Type"
-              description="This determines which package contents you see."
+              title={copy.mealTypeTitle}
+              description={copy.mealTypeDescription}
             >
               <div className="grid gap-3 sm:grid-cols-2">
                 <RadioCard
                   active={mealType === 'fasting'}
-                  title="Fasting"
-                  subtitle="ጾም"
-                  description="Vegan Agelgil baskets for fasting days."
+                  title={copy.fastingTitle}
+                  subtitle={copy.fastingSubtitle}
+                  description={copy.fastingDescription}
                   onClick={() => selectMeal('fasting')}
                 />
                 <RadioCard
                   active={mealType === 'non-fasting'}
-                  title="Non-Fasting"
-                  subtitle="ፍስክ"
-                  description="Meat and mixed Agelgil baskets."
+                  title={copy.nonFastingTitle}
+                  subtitle={copy.nonFastingSubtitle}
+                  description={copy.nonFastingDescription}
                   onClick={() => selectMeal('non-fasting')}
                 />
               </div>
@@ -225,8 +251,8 @@ export default function AgelgilPage() {
             <Reveal show={mealDone} sectionRef={kindRef}>
               <SectionCard
                 step={2}
-                title="Package Type"
-                description="Special adds extra items on top of Regular."
+                title={copy.packageTypeTitle}
+                description={copy.packageTypeDescription}
               >
                 <div className="grid gap-3 sm:grid-cols-2">
                   {(['regular', 'special'] as AgelgilPackageKind[]).map((kind) => {
@@ -248,7 +274,7 @@ export default function AgelgilPage() {
                         )}
                       >
                         <p className="font-display text-lg font-bold uppercase">
-                          {kind === 'regular' ? 'Regular' : 'Special'}
+                          {kind === 'regular' ? copy.regularTitle : copy.specialTitle}
                         </p>
                         <p
                           className={cn(
@@ -259,10 +285,10 @@ export default function AgelgilPage() {
                           )}
                         >
                           {kind === 'special' && mealType === 'fasting'
-                            ? 'Regular + Sambusa + አነባብሮ (Anebabro)'
+                            ? copy.specialFastingBlurb
                             : kind === 'special'
-                              ? 'Regular + Kitfo + አይብ (Cheese) + Kocho'
-                              : 'Core basket items'}
+                              ? copy.specialNonFastingBlurb
+                              : copy.regularBlurb}
                         </p>
                         {info && (
                           <ul
@@ -299,8 +325,8 @@ export default function AgelgilPage() {
             <Reveal show={kindDone} sectionRef={sizeRef}>
               <SectionCard
                 step={3}
-                title="Package Size"
-                description="Each size has a fixed price. We’ll combine sizes if you need more guests."
+                title={copy.packageSizeTitle}
+                description={copy.packageSizeDescription}
               >
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {AGELGIL_SIZES.map((size) => {
@@ -333,7 +359,7 @@ export default function AgelgilPage() {
                               : 'text-[#2C1A14]/45',
                           )}
                         >
-                          people
+                          {copy.peopleSuffix}
                         </p>
                         <p
                           className={cn(
@@ -356,8 +382,8 @@ export default function AgelgilPage() {
             <Reveal show={sizeDone} sectionRef={guestsRef}>
               <SectionCard
                 step={4}
-                title="How many people are you serving?"
-                description="We’ll build the best package combination automatically."
+                title={copy.guestsTitle}
+                description={copy.guestsDescription}
               >
                 <div className="flex flex-wrap items-center gap-3">
                   <QuantityStepper
@@ -370,21 +396,23 @@ export default function AgelgilPage() {
                     }}
                   />
                   <span className="flex items-center gap-1.5 text-sm text-[#2C1A14]/55">
-                    <Users className="h-4 w-4" /> people
+                    <Users className="h-4 w-4" /> {copy.peopleSuffix}
                   </span>
                 </div>
 
                 {combo.length > 0 && (
                   <div className="mt-5 rounded-2xl border border-[#E8B838]/35 bg-[#2C1A14] p-4 text-[#FAF5EE]">
                     <p className="text-xs font-semibold uppercase tracking-wider text-[#E8B838]">
-                      Recommended combination
+                      {copy.recommendedCombo}
                     </p>
                     <p className="mt-1 font-display text-lg font-bold">
                       {formatComboLabel(combo)}
                     </p>
                     <p className="mt-1 text-xs text-[#FAF5EE]/60">
-                      Covers {covered} people ·{' '}
-                      {combo.reduce((n, l) => n + l.quantity, 0)} package(s)
+                      {fillCopy(copy.coversPeople, {
+                        count: covered,
+                        packages: combo.reduce((n, l) => n + l.quantity, 0),
+                      })}
                     </p>
                     <ul className="mt-3 space-y-1.5 border-t border-[#FAF5EE]/15 pt-3 text-sm">
                       {combo.map((line) => (
@@ -393,8 +421,11 @@ export default function AgelgilPage() {
                           className="flex justify-between gap-3"
                         >
                           <span>
-                            {line.quantity} × {line.size}-person (
-                            {formatPrice(line.unitPrice)} each)
+                            {fillCopy(copy.comboLine, {
+                              qty: line.quantity,
+                              size: line.size,
+                              price: formatPrice(line.unitPrice),
+                            })}
                           </span>
                           <span className="font-semibold text-[#E8B838]">
                             {formatPrice(line.lineTotal)}
@@ -403,7 +434,7 @@ export default function AgelgilPage() {
                       ))}
                     </ul>
                     <p className="mt-3 flex justify-between border-t border-[#FAF5EE]/15 pt-3 font-display text-xl font-bold">
-                      <span>Total</span>
+                      <span>{copy.summaryTotal}</span>
                       <span className="text-[#E8B838]">{formatPrice(grandTotal)}</span>
                     </p>
                   </div>
@@ -415,62 +446,86 @@ export default function AgelgilPage() {
                   disabled={guests < 10 || !combo.length}
                   className="btn-primary mt-5 justify-center disabled:opacity-50"
                 >
-                  Continue with this combination
+                  {copy.continueCombo}
                 </button>
               </SectionCard>
             </Reveal>
 
             {/* 5 — Delivery */}
             <Reveal show={guestsDone} sectionRef={deliveryRef}>
-              <SectionCard step={5} title="How would you like to receive your order?">
+              <SectionCard step={5} title={copy.fulfillmentTitle}>
                 <div className="mb-4 flex flex-wrap gap-2">
                   <Chip
                     active={deliveryMethod === 'pickup'}
                     onClick={() => setDeliveryMethod('pickup')}
                   >
-                    Pickup
+                    {copy.selfPickup}
                   </Chip>
                   <Chip
                     active={deliveryMethod === 'delivery'}
                     onClick={() => setDeliveryMethod('delivery')}
                   >
-                    Delivery
+                    {copy.delivery}
                   </Chip>
                 </div>
+
+                {deliveryMethod === 'delivery' && (
+                  <DeliveryFeeNotice className="mb-4" />
+                )}
+
+                {deliveryMethod === 'pickup' && (
+                  <PickupLocationPicker
+                    className="mb-4"
+                    value={pickupLocationId}
+                    onChange={(loc) => {
+                      setPickupLocationId(loc.id)
+                      setPickupLocationLabel(
+                        loc.area ? `${loc.name} · ${loc.area}` : loc.name,
+                      )
+                    }}
+                    error={errors.pickupLocation}
+                  />
+                )}
 
                 {deliveryMethod && (
                   <div className="grid gap-4 sm:grid-cols-2">
                     <TextField
                       label={
-                        deliveryMethod === 'delivery' ? 'Delivery date' : 'Pickup date'
+                        deliveryMethod === 'delivery' ? copy.deliveryDate : copy.pickupDate
                       }
                       name="date"
                       type="date"
                       required
+                      min={addisDateInputMin(addisNow)}
                       value={date}
                       error={errors.date}
-                      onChange={(e) => setDate(e.target.value)}
+                      onChange={(e) => {
+                        const nextDate = e.target.value
+                        setDate(nextDate)
+                        if (time && addisTimeError(nextDate, time, addisNow)) setTime('')
+                      }}
                     />
                     <TextField
                       label={
-                        deliveryMethod === 'delivery' ? 'Delivery time' : 'Pickup time'
+                        deliveryMethod === 'delivery' ? copy.deliveryTime : copy.pickupTime
                       }
                       name="time"
                       type="time"
                       required
+                      min={addisTimeInputMin(date, addisNow)}
                       value={time}
                       error={errors.time}
                       onChange={(e) => setTime(e.target.value)}
                     />
                     {deliveryMethod === 'delivery' && (
                       <TextField
-                        label="Delivery address"
+                        label={copy.deliveryAddress}
                         name="location"
                         required
                         value={location}
                         error={errors.location}
                         onChange={(e) => setLocation(e.target.value)}
-                        placeholder="Address in Addis Ababa"
+                        placeholder={copy.deliveryAddressPlaceholder}
                         className="sm:col-span-2"
                       />
                     )}
@@ -481,42 +536,51 @@ export default function AgelgilPage() {
 
             {/* 6 — Summary */}
             <Reveal show={deliveryDone} sectionRef={summaryRef}>
-              <SectionCard step={6} title="Order Summary">
+              <SectionCard step={6} title={copy.orderSummary}>
                 {mealType && packageKind && deliveryMethod && (
                   <dl className="mb-6 space-y-3 rounded-2xl bg-[#2C1A14]/[0.04] p-5 text-sm">
                     <Row
-                      label="Meal Type"
-                      value={mealType === 'fasting' ? 'Fasting (ጾም)' : 'Non-Fasting (ፍስክ)'}
+                      label={copy.summaryMealType}
+                      value={mealType === 'fasting' ? copy.mealTypeFastingValue : copy.mealTypeNonFastingValue}
                     />
                     <Row
-                      label="Package Type"
-                      value={packageKind === 'regular' ? 'Regular' : 'Special'}
+                      label={copy.summaryPackageType}
+                      value={packageKind === 'regular' ? copy.regularTitle : copy.specialTitle}
                     />
-                    <Row label="Package Combination" value={formatComboLabel(combo)} />
-                    <Row label="Total Guests" value={`${guests} (covers ${covered})`} />
+                    <Row label={copy.summaryCombo} value={formatComboLabel(combo)} />
+                    <Row
+                      label={copy.summaryTotalGuests}
+                      value={fillCopy(copy.summaryGuestsValue, { guests, covered })}
+                    />
                     {combo.map((line) => (
                       <Row
                         key={line.size}
-                        label={`${line.quantity} × ${line.size}-person`}
+                        label={fillCopy(copy.comboLineShort, { qty: line.quantity, size: line.size })}
                         value={formatPrice(line.lineTotal)}
                       />
                     ))}
-                    <Row label="Grand Total" value={formatPrice(grandTotal)} highlight />
+                    <Row label={copy.grandTotal} value={formatPrice(grandTotal)} highlight />
                     <Row
-                      label="Fulfillment"
-                      value={deliveryMethod === 'delivery' ? 'Delivery' : 'Pickup'}
+                      label={copy.summaryFulfillment}
+                      value={formatFulfillmentLabel(deliveryMethod, {
+                        pickup: copy.selfPickup,
+                        delivery: copy.delivery,
+                      })}
                     />
-                    <Row label="Date" value={date} />
-                    <Row label="Time" value={time} />
+                    {deliveryMethod === 'pickup' && pickupLocationLabel ? (
+                      <Row label={copy.pickupLocation} value={pickupLocationLabel} />
+                    ) : null}
+                    <Row label={copy.summaryDate} value={date} />
+                    <Row label={copy.summaryTime} value={time} />
                     {deliveryMethod === 'delivery' && (
-                      <Row label="Address" value={location} />
+                      <Row label={copy.summaryAddress} value={location} />
                     )}
                   </dl>
                 )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <TextField
-                    label="Your name"
+                    label={copy.yourName}
                     name="name"
                     required
                     value={name}
@@ -524,7 +588,7 @@ export default function AgelgilPage() {
                     onChange={(e) => setName(e.target.value)}
                   />
                   <TextField
-                    label="Phone number"
+                    label={copy.phoneNumber}
                     name="phone"
                     type="tel"
                     required
@@ -543,10 +607,10 @@ export default function AgelgilPage() {
                   {submitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Confirming…
+                      {copy.confirming}
                     </>
                   ) : (
-                    'Confirm Agelgil Order'
+                    copy.confirmAgelgil
                   )}
                 </button>
               </SectionCard>
@@ -558,18 +622,18 @@ export default function AgelgilPage() {
             <div className="sticky top-24 z-30">
               <div className="rounded-3xl border border-[#E8B838]/35 bg-[#2C1A14] p-6 text-[#FAF5EE] shadow-xl">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[#E8B838]">
-                  Your estimate
+                  {copy.yourEstimate}
                 </p>
                 <p className="mt-1 text-sm text-[#FAF5EE]/65">
-                  Fixed package prices — not per person
+                  {copy.estimateHint}
                 </p>
                 <div className="mt-5 space-y-2 border-b border-[#FAF5EE]/15 pb-5 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-[#FAF5EE]/70">Guests</span>
+                    <span className="text-[#FAF5EE]/70">{copy.summaryGuests}</span>
                     <span>{guestsDone ? guests : '—'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#FAF5EE]/70">Combo</span>
+                    <span className="text-[#FAF5EE]/70">{copy.summaryComboShort}</span>
                     <span className="max-w-[55%] text-right">
                       {combo.length ? formatComboLabel(combo) : '—'}
                     </span>
@@ -587,10 +651,10 @@ export default function AgelgilPage() {
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[#E8B838]">
-                Your estimate
+                {copy.yourEstimate}
               </p>
               <p className="text-xs text-[#FAF5EE]/70">
-                {combo.length ? formatComboLabel(combo) : 'Select options to see total'}
+                {combo.length ? formatComboLabel(combo) : copy.selectToSeeTotal}
               </p>
             </div>
             <p className="font-display text-2xl font-bold text-[#E8B838]">

@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { Pencil, Plus, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
 import { catalogApi, type CatalogItem } from '@/lib/api'
 import { FormField } from './shared'
+import { CollapsibleServiceSection } from '@/features/services/components/CollapsibleServiceSection'
 
 type Role = 'occasion' | 'beverage'
 
@@ -123,20 +123,18 @@ export function CateringLabelsEditor({
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle className="text-base">{title}</CardTitle>
-              <p className="mt-1 text-sm text-brown/60">{description}</p>
-            </div>
-            <Button size="sm" onClick={openAdd} className="gap-1.5">
-              <Plus className="h-4 w-4" />
-              {addLabel}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
+      <CollapsibleServiceSection
+        title={title}
+        description={description}
+        count={items.length}
+        headerAction={
+          <Button size="sm" onClick={openAdd} className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            {addLabel}
+          </Button>
+        }
+      >
+        <div className="space-y-2">
           {items.length === 0 ? (
             <p className="text-sm text-brown/60">{emptyLabel}</p>
           ) : (
@@ -167,8 +165,8 @@ export function CateringLabelsEditor({
               )
             })
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </CollapsibleServiceSection>
 
       <Sheet
         open={open}

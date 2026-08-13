@@ -629,6 +629,8 @@ adminRoutes.patch("/catalog/:id", async (c) => {
       nameI18n: z.record(z.string(), z.string()).optional(),
       description: z.string().optional(),
       descriptionI18n: z.record(z.string(), z.string()).optional(),
+      kind: z.enum(["PRODUCT", "PACKAGE", "CONFIG"]).optional(),
+      slug: z.string().min(1).optional(),
       price: z.number().optional().nullable(),
       image: z.string().optional().nullable(),
       images: z.array(z.string()).optional(),

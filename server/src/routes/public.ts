@@ -14,8 +14,8 @@ import {
   resolveLocalizedTextWithFallback,
 } from "../lib/i18nContent.js";
 import type { DeliveryMethod, Prisma, RequestSource } from "@prisma/client";
-import { getText } from "../bot/helpers/localize.js";
 import { optimizedImageList, optimizedImageUrl, optimizeCloudinaryUrlsInJson } from "../lib/image-url.js";
+import { parseAddisCalendarDate, validatePreferredDateTime } from "../lib/addisTime.js";
 
 export const publicRoutes = new Hono();
 
@@ -293,7 +293,7 @@ const submitSchema = z.object({
   location: z.string().optional().nullable(),
   preferredDate: z
     .union([
-      z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Invalid preferredDate"),
+      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid preferredDate"),
       z.null(),
     ])
     .optional(),
@@ -320,6 +320,11 @@ publicRoutes.post("/requests", async (c) => {
   }
 
   const input = parsed.data;
+  const scheduleError = validatePreferredDateTime(input.preferredDate, input.preferredTime);
+  if (scheduleError) {
+    return c.json({ error: scheduleError }, 400);
+  }
+
   const service = await prisma.service.findUnique({
     where: { slug: input.serviceSlug },
   });
@@ -387,7 +392,7 @@ publicRoutes.post("/requests", async (c) => {
         telegramUserId: resolvedTelegramUserId ?? undefined,
         deliveryMethod: (input.deliveryMethod as DeliveryMethod | null) ?? undefined,
         location: input.location ?? undefined,
-        preferredDate: input.preferredDate ? new Date(input.preferredDate) : undefined,
+        preferredDate: input.preferredDate ? parseAddisCalendarDate(input.preferredDate) : undefined,
         preferredTime: input.preferredTime ?? undefined,
         notes: input.notes ?? undefined,
         guests: input.guests ?? undefined,
@@ -413,9 +418,9 @@ publicRoutes.post("/requests", async (c) => {
     return created;
   });
 
-  // ── Send Telegram notification to admins ─────────────────────────────────
+  // Admin Telegram alert — unchanged, independent of customer confirmation.
   try {
-    const { notifyNewRequest, notifyTelegramUser } = await import("../bot/notifications.js");
+    const { notifyNewRequest } = await import("../bot/notifications.js");
     await notifyNewRequest({
       reference,
       customerName: input.customerName,
@@ -428,15 +433,30 @@ publicRoutes.post("/requests", async (c) => {
       notes: input.notes,
       telegramUsername,
     });
+  } catch {
+    // Don't fail the request if admin notification fails
+  }
 
-    if (telegramRecipient) {
-      const confirmation = await getText("request_received", telegramRecipient.languageCode, {
+  // Customer Telegram confirmation — only for users who entered through the bot.
+  // Sent even when the web app already shows the same confirmation screen.
+  if (telegramRecipient) {
+    try {
+      const { notifyTelegramUser } = await import("../bot/notifications.js");
+      const { formatCustomerRequestConfirmation } = await import("../bot/customer-confirmation.js");
+      const confirmation = formatCustomerRequestConfirmation({
+        serviceSlug: input.serviceSlug,
         reference,
+        payload: input.payload,
+        guests: input.guests,
+        totalAmount: input.totalAmount,
+        packageSummary: input.packageSummary,
+        deliveryMethod: input.deliveryMethod,
+        languageCode: telegramRecipient.languageCode,
       });
       await notifyTelegramUser(telegramRecipient.telegramId.toString(), confirmation);
+    } catch {
+      // Don't fail the request if customer confirmation fails
     }
-  } catch {
-    // Don't fail the request if notification fails
   }
 
   return c.json({ data: request }, 201);
