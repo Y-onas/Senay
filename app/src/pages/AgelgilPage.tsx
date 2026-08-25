@@ -35,6 +35,8 @@ import {
   addisTimeInputMin,
 } from '@/lib/addisTime'
 import { formatEthiopianFieldValue } from '@/components/common/EthiopianDatePicker'
+
+export default function AgelgilPage() {
   const navigate = useNavigate()
   const page = usePageContent('agelgil')
   const addisNow = useAddisNow()
