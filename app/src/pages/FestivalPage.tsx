@@ -26,14 +26,15 @@ import { usePageContent } from '@/hooks/usePageContent'
 import { useServiceEnabled } from '@/hooks/useServiceEnabled'
 import PageHero from '@/components/common/PageHero'
 import QuantityStepper from '@/components/common/QuantityStepper'
-import { TextField, TextAreaField } from '@/components/common/FormField'
+import { DateField, TextField, TextAreaField } from '@/components/common/FormField'
 import { PickupLocationPicker } from '@/components/common/PickupLocationPicker'
 import { formatPrice } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { DeliveryFeeNotice } from '@/components/common/DeliveryFeeNotice'
 import { useAddisNow } from '@/hooks/useAddisNow'
 import { useFormCopy, fillCopy } from '@/hooks/useFormCopy'
-import { addisDateError, addisDateInputMin } from '@/lib/addisTime'
+import { addisDateError, addisDateInputMin, addisTimeError, addisTimeInputMin } from '@/lib/addisTime'
+import { formatEthiopianFieldValue } from '@/components/common/EthiopianDatePicker'
 
 const ITEM_ICONS: Record<FestivalItemIcon, LucideIcon> = {
   chicken: Drumstick,
@@ -68,6 +69,7 @@ export default function FestivalPage() {
   const [pickupLocationLabel, setPickupLocationLabel] = useState('')
   const [location, setLocation] = useState('')
   const [date, setDate] = useState('')
+  const [time, setTime] = useState('')
   const [notes, setNotes] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -111,6 +113,11 @@ export default function FestivalPage() {
       const dateErr = addisDateError(date, addisNow)
       if (dateErr) next.date = dateErr
     }
+    if (!time) next.time = copy.errorTime
+    else {
+      const timeErr = addisTimeError(date, time, addisNow)
+      if (timeErr) next.time = timeErr
+    }
     if (deliveryMethod === 'delivery' && !location.trim()) {
       next.location = copy.errorAddress
     }
@@ -150,6 +157,8 @@ export default function FestivalPage() {
         includedItems,
         deliveryMethod,
         date,
+        dateDisplay: formatEthiopianFieldValue(date),
+        time,
         location:
           deliveryMethod === 'delivery' ? location.trim() : pickupLocationLabel,
         pickupLocationId: deliveryMethod === 'pickup' ? pickupLocationId : undefined,
@@ -164,6 +173,7 @@ export default function FestivalPage() {
         deliveryMethod: toApiDelivery(deliveryMethod),
         location: payload.location,
         preferredDate: date,
+        preferredTime: time,
         notes: payload.notes,
         packageSummary: `${selected.name} × ${qty}`,
         totalAmount: grandTotal,
@@ -517,15 +527,29 @@ export default function FestivalPage() {
                   className="sm:col-span-2"
                 />
               )}
-              <TextField
+              <DateField
                 label={copy.preferredDate}
                 name="date"
-                type="date"
                 required
                 min={addisDateInputMin(addisNow)}
                 value={date}
                 error={errors.date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(nextDate) => {
+                  setDate(nextDate)
+                  if (time && addisTimeError(nextDate, time, addisNow)) setTime('')
+                }}
+              />
+              <TextField
+                label={
+                  deliveryMethod === 'delivery' ? copy.deliveryTime : copy.pickupTime
+                }
+                name="time"
+                type="time"
+                required
+                min={addisTimeInputMin(date, addisNow)}
+                value={time}
+                error={errors.time}
+                onChange={(e) => setTime(e.target.value)}
               />
             </div>
 

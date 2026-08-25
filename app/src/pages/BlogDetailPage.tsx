@@ -6,16 +6,11 @@ import { useLanguage } from '@/hooks/useLanguage'
 import BlogCard from '@/components/blog/BlogCard'
 import ArticleBlocks from '@/components/blog/ArticleBlocks'
 import { normalizeBlocks } from '@/types/blogBlocks'
+import { formatAddisDate } from '@/lib/addisTime'
 
 function formatDate(value?: string) {
   if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  return formatAddisDate(value)
 }
 
 export default function BlogDetailPage() {

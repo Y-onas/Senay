@@ -184,6 +184,8 @@ export interface CateringRequestDraft {
   totalPrice: number
   deliveryMethod: CateringDeliveryMethod
   date: string
+  /** Exact Ethiopian date label shown to the customer (admin must show this). */
+  dateDisplay?: string
   time: string
   location: string
   pickupLocationId?: string

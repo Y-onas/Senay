@@ -1,5 +1,11 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { CalendarIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  EthiopianDatePicker,
+  formatEthiopianFieldValue,
+} from '@/components/common/EthiopianDatePicker'
 
 interface BaseProps {
   label: string
@@ -96,6 +102,71 @@ export function TextAreaField({
         className={cn(baseInput, 'resize-none', error && 'border-destructive focus:border-destructive')}
         {...props}
       />
+    </Wrapper>
+  )
+}
+
+type DateFieldProps = BaseProps & {
+  value: string
+  onChange: (value: string) => void
+  min?: string
+  placeholder?: string
+}
+
+export function DateField({
+  label,
+  name,
+  error,
+  required,
+  hint,
+  className,
+  value,
+  onChange,
+  min,
+  placeholder = 'ቀን ይምረጡ',
+}: DateFieldProps) {
+  const [open, setOpen] = useState(false)
+  const formatted = value ? formatEthiopianFieldValue(value) : ''
+
+  return (
+    <Wrapper
+      label={label}
+      name={name}
+      error={error}
+      required={required}
+      hint={hint}
+      className={className}
+    >
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            id={name}
+            className={cn(
+              baseInput,
+              'flex items-center justify-between text-left',
+              !value && 'text-gray-400',
+              error && 'border-destructive focus:border-destructive',
+            )}
+          >
+            <span>{formatted || placeholder}</span>
+            <CalendarIcon className="h-4 w-4 text-gray-500" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto border-0 bg-transparent p-0 shadow-none" align="start">
+          <EthiopianDatePicker
+            value={value}
+            min={min}
+            onChange={(next) => {
+              onChange(next)
+              if (next) setOpen(false)
+            }}
+            onClear={() => setOpen(false)}
+            onSelectToday={() => setOpen(false)}
+          />
+        </PopoverContent>
+      </Popover>
+      <input type="hidden" name={name} value={value} required={required} />
     </Wrapper>
   )
 }

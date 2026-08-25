@@ -55,6 +55,13 @@ export const blogBlockSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     id: z.string(),
+    type: z.literal("video"),
+    url: z.string().trim(),
+    caption: localizedStringSchema.optional(),
+    platform: z.enum(["youtube", "tiktok"]).optional(),
+  }),
+  z.object({
+    id: z.string(),
     type: z.literal("gallery"),
     images: z.array(imageItemSchema),
   }),

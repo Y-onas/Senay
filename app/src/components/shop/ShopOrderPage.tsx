@@ -4,14 +4,20 @@ import { Loader2, Search, ShoppingBag, X } from 'lucide-react'
 import type { CateringDeliveryMethod } from '@/types'
 import PageHero from '@/components/common/PageHero'
 import QuantityStepper from '@/components/common/QuantityStepper'
-import { TextField, TextAreaField } from '@/components/common/FormField'
+import { DateField, TextField, TextAreaField } from '@/components/common/FormField'
 import { PickupLocationPicker } from '@/components/common/PickupLocationPicker'
 import { formatPrice } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { DeliveryFeeNotice } from '@/components/common/DeliveryFeeNotice'
 import { useAddisNow } from '@/hooks/useAddisNow'
 import { useFormCopy, fillCopy } from '@/hooks/useFormCopy'
-import { addisDateError, addisDateInputMin } from '@/lib/addisTime'
+import {
+  addisDateError,
+  addisDateInputMin,
+  addisTimeError,
+  addisTimeInputMin,
+} from '@/lib/addisTime'
+import { formatEthiopianFieldValue } from '@/components/common/EthiopianDatePicker'
 import type { ServiceSlug } from '@/services/requestService'
 
 export type ShopOrderKind = 'baltina' | 'drinks'
@@ -89,6 +95,7 @@ export default function ShopOrderPage({
   const [pickupLocationLabel, setPickupLocationLabel] = useState('')
   const [location, setLocation] = useState('')
   const [date, setDate] = useState('')
+  const [time, setTime] = useState('')
   const [notes, setNotes] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -142,6 +149,11 @@ export default function ShopOrderPage({
       const dateErr = addisDateError(date, addisNow)
       if (dateErr) next.date = dateErr
     }
+    if (!time) next.time = copy.errorTime
+    else {
+      const timeErr = addisTimeError(date, time, addisNow)
+      if (timeErr) next.time = timeErr
+    }
     if (deliveryMethod === 'delivery' && !location.trim()) {
       next.location = copy.errorAddress
     }
@@ -186,6 +198,8 @@ export default function ShopOrderPage({
         grandTotal,
         deliveryMethod,
         date,
+        dateDisplay: formatEthiopianFieldValue(date),
+        time,
         location: resolvedLocation,
         pickupLocationId: deliveryMethod === 'pickup' ? pickupLocationId : undefined,
         pickupLocation: deliveryMethod === 'pickup' ? pickupLocationLabel : undefined,
@@ -199,6 +213,7 @@ export default function ShopOrderPage({
         deliveryMethod: toApiDelivery(deliveryMethod),
         location: resolvedLocation,
         preferredDate: date,
+        preferredTime: time,
         notes: notes.trim() || undefined,
         packageSummary: lines.map((l) => `${l.product.name} × ${l.qty}`).join(', '),
         totalAmount: grandTotal,
@@ -481,15 +496,29 @@ export default function ShopOrderPage({
                     className="sm:col-span-2"
                   />
                 )}
-                <TextField
+                <DateField
                   label={copy.preferredDate}
                   name="date"
-                  type="date"
                   required
                   min={minDate}
                   value={date}
                   error={errors.date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(nextDate) => {
+                    setDate(nextDate)
+                    if (time && addisTimeError(nextDate, time, addisNow)) setTime('')
+                  }}
+                />
+                <TextField
+                  label={
+                    deliveryMethod === 'delivery' ? copy.deliveryTime : copy.pickupTime
+                  }
+                  name="time"
+                  type="time"
+                  required
+                  min={addisTimeInputMin(date, addisNow)}
+                  value={time}
+                  error={errors.time}
+                  onChange={(e) => setTime(e.target.value)}
                 />
               </div>
 

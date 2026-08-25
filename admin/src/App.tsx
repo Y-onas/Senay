@@ -14,7 +14,6 @@ import { TestimonialsPage } from '@/features/pages/TestimonialsPage'
 import { FaqsPage } from '@/features/pages/FaqsPage'
 import { NavigationPage } from '@/features/navigation/NavigationPage'
 import { FooterPage } from '@/features/footer/FooterPage'
-import { MenuItemsPage } from '@/features/menu/MenuItemsPage'
 import { ServicesPage } from '@/features/services/ServicesPage'
 import { ServiceDetailPage } from '@/features/services/ServiceDetailPage'
 import { TelegramPage } from '@/features/telegram/TelegramPage'
@@ -45,7 +44,6 @@ export default function App() {
           <Route path="faqs" element={<FaqsPage />} />
           <Route path="navigation" element={<NavigationPage />} />
           <Route path="footer" element={<FooterPage />} />
-          <Route path="menu-items" element={<MenuItemsPage />} />
           <Route path="services" element={<ServicesPage />} />
           <Route path="services/:id" element={<ServiceDetailPage />} />
           <Route path="telegram" element={<TelegramPage />} />

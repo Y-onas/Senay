@@ -1664,12 +1664,22 @@ async function seedHomeSections() {
       label: "Call to Action",
       order: 13,
       content: {
-        title: "Ready to taste tradition?",
+        title: "Ready to taste healthy, fresh and tasty foods and traditional drinks",
         description: "Visit us, book catering, or order drinks to go.",
-        primaryLink: "/menu",
+        primaryLink: "/shop",
         primaryText: "Order Now",
         secondaryLink: "/catering",
         secondaryText: "Book Catering",
+        left: {
+          name: "Tibs",
+          category: "food",
+          image: "",
+        },
+        right: {
+          name: "House Tela",
+          category: "drinks",
+          image: "",
+        },
       },
     },
   ];
@@ -1678,7 +1688,7 @@ async function seedHomeSections() {
     await prisma.homeSection.upsert({
       where: { key: s.key },
       create: s,
-      update: {},
+      update: s.key === "cta" ? { content: s.content, label: s.label } : {},
     });
   }
 }

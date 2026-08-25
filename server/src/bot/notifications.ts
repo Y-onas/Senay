@@ -3,9 +3,9 @@
  * Sends Telegram messages to admins when new requests arrive.
  * Admin chat IDs come from the database (Admin.telegramChatId), not hardcoded.
  */
-import { Bot } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import { prisma } from "../lib/prisma.js";
-import { resolveBotToken, shouldNotifyAdmins } from "../lib/botConfig.js";
+import { resolveBotToken, resolveWebsiteBaseUrl, shouldNotifyAdmins } from "../lib/botConfig.js";
 import { escapeHtml } from "./helpers/html.js";
 
 let botInstance: Bot | null = null;
@@ -21,10 +21,29 @@ export function setNotificationBot(bot: Bot): void {
   botInstance = bot;
 }
 
+/** Public origin used for admin deep-links (must be reachable from the admin's phone). */
+function resolveAdminSiteOrigin(): string {
+  const fromEnv = (
+    process.env.ADMIN_SITE_URL?.trim() ||
+    process.env.WEBAPP_URL?.trim() ||
+    process.env.WEBSITE_BASE_URL?.trim() ||
+    resolveWebsiteBaseUrl()
+  ).replace(/\/+$/, "");
+  return fromEnv || "http://localhost:3000";
+}
+
+export function buildAdminRequestUrl(requestId: string): string {
+  return `${resolveAdminSiteOrigin()}/st-hq/requests/${encodeURIComponent(requestId)}`;
+}
+
+type NotifyOptions = {
+  reply_markup?: InlineKeyboard;
+};
+
 /**
  * Send a notification to all admins with a telegramChatId configured.
  */
-export async function notifyAdmins(message: string): Promise<void> {
+export async function notifyAdmins(message: string, options: NotifyOptions = {}): Promise<void> {
   if (!(await shouldNotifyAdmins())) {
     console.log("[Bot Notifications] Admin notifications disabled in dashboard settings.");
     return;
@@ -64,6 +83,8 @@ export async function notifyAdmins(message: string): Promise<void> {
       recipientIds.map((chatId) =>
         botApi.sendMessage(chatId, message, {
           parse_mode: "HTML",
+          link_preview_options: { is_disabled: true },
+          ...(options.reply_markup ? { reply_markup: options.reply_markup } : {}),
         }),
       ),
     );
@@ -98,6 +119,7 @@ export async function notifyTelegramUser(telegramId: string, message: string): P
  * Format and send a new service request notification to admins.
  */
 export async function notifyNewRequest(request: {
+  id: string;
   reference: string;
   customerName: string;
   phone: string;
@@ -114,6 +136,8 @@ export async function notifyNewRequest(request: {
   const reference = escapeHtml(request.reference);
   const customerName = escapeHtml(request.customerName);
   const phone = escapeHtml(request.phone);
+  const adminUrl = buildAdminRequestUrl(request.id);
+  const safeUrl = escapeHtml(adminUrl);
 
   let message = `🔔 <b>New ${serviceName} Request</b>\n\n`;
   message += `📋 <b>Reference:</b> ${reference}\n`;
@@ -132,10 +156,14 @@ export async function notifyNewRequest(request: {
     message += `💰 <b>Amount:</b> ${request.totalAmount.toLocaleString()} ETB\n`;
   }
   if (request.notes) {
-    message += `\n📌 <b>Notes:</b> ${escapeHtml(request.notes)}`;
+    message += `\n📌 <b>Notes:</b> ${escapeHtml(request.notes)}\n`;
   }
 
-  await notifyAdmins(message);
+  message += `\n🔗 <a href="${safeUrl}">Open request in admin</a>`;
+
+  const keyboard = new InlineKeyboard().url("Open request", adminUrl);
+
+  await notifyAdmins(message, { reply_markup: keyboard });
 }
 
 /**

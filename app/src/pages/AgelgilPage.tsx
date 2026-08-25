@@ -19,7 +19,7 @@ import PageHero from '@/components/common/PageHero'
 import { usePageContent } from '@/hooks/usePageContent'
 import { useServiceEnabled } from '@/hooks/useServiceEnabled'
 import QuantityStepper from '@/components/common/QuantityStepper'
-import { TextField } from '@/components/common/FormField'
+import { DateField, TextField } from '@/components/common/FormField'
 import { PickupLocationPicker } from '@/components/common/PickupLocationPicker'
 import { formatFulfillmentLabel } from '@/lib/fulfillment'
 import { formatPrice } from '@/lib/format'
@@ -29,12 +29,12 @@ import { useAddisNow } from '@/hooks/useAddisNow'
 import { useFormCopy, fillCopy } from '@/hooks/useFormCopy'
 import {
   addisDateError,
+  formatAddisDateInput,
   addisDateInputMin,
   addisTimeError,
   addisTimeInputMin,
 } from '@/lib/addisTime'
-
-export default function AgelgilPage() {
+import { formatEthiopianFieldValue } from '@/components/common/EthiopianDatePicker'
   const navigate = useNavigate()
   const page = usePageContent('agelgil')
   const addisNow = useAddisNow()
@@ -92,6 +92,7 @@ export default function AgelgilPage() {
 
   const grandTotal = sumAgelgilTotal(combo)
   const covered = coveredGuests(combo)
+  const ethiopianDate = formatAddisDateInput(date)
 
   useEffect(() => {
     if (mealDone) scrollTo(kindRef)
@@ -164,6 +165,7 @@ export default function AgelgilPage() {
         grandTotal,
         deliveryMethod,
         date,
+        dateDisplay: formatEthiopianFieldValue(date),
         time,
         location:
           deliveryMethod === 'delivery' ? location.trim() : pickupLocationLabel,
@@ -489,18 +491,16 @@ export default function AgelgilPage() {
 
                 {deliveryMethod && (
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <TextField
+                    <DateField
                       label={
                         deliveryMethod === 'delivery' ? copy.deliveryDate : copy.pickupDate
                       }
                       name="date"
-                      type="date"
                       required
                       min={addisDateInputMin(addisNow)}
                       value={date}
                       error={errors.date}
-                      onChange={(e) => {
-                        const nextDate = e.target.value
+                      onChange={(nextDate) => {
                         setDate(nextDate)
                         if (time && addisTimeError(nextDate, time, addisNow)) setTime('')
                       }}
@@ -570,7 +570,7 @@ export default function AgelgilPage() {
                     {deliveryMethod === 'pickup' && pickupLocationLabel ? (
                       <Row label={copy.pickupLocation} value={pickupLocationLabel} />
                     ) : null}
-                    <Row label={copy.summaryDate} value={date} />
+                    <Row label={copy.summaryDate} value={ethiopianDate || date} />
                     <Row label={copy.summaryTime} value={time} />
                     {deliveryMethod === 'delivery' && (
                       <Row label={copy.summaryAddress} value={location} />

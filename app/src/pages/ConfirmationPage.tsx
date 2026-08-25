@@ -37,6 +37,7 @@ type BaltinaConfirmation = {
   grandTotal: number
   deliveryMethod: string
   date: string
+  time?: string
   location: string
   pickupLocation?: string
 }
@@ -52,6 +53,7 @@ type FestivalConfirmation = {
   includedItems: string[]
   deliveryMethod: string
   date: string
+  time?: string
   location: string
   pickupLocation?: string
 }
@@ -199,6 +201,16 @@ export default function ConfirmationPage() {
                 {formatPrice(data.request.grandTotal)}
               </span>
             </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-gray-500">Date</span>
+              <span className="font-medium text-gray-900">{data.request.date}</span>
+            </div>
+            {data.request.time ? (
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-500">Time</span>
+                <span className="font-medium text-gray-900">{data.request.time}</span>
+              </div>
+            ) : null}
             <FulfillmentDetails
               method={data.request.deliveryMethod}
               pickupLocation={
@@ -237,6 +249,16 @@ export default function ConfirmationPage() {
                 {formatPrice(data.request.grandTotal)}
               </span>
             </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-gray-500">Date</span>
+              <span className="font-medium text-gray-900">{data.request.date}</span>
+            </div>
+            {data.request.time ? (
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-500">Time</span>
+                <span className="font-medium text-gray-900">{data.request.time}</span>
+              </div>
+            ) : null}
             <FulfillmentDetails
               method={data.request.deliveryMethod}
               pickupLocation={

@@ -30,7 +30,7 @@ import { useLanguage } from '@/hooks/useLanguage'
 import { useServiceEnabled } from '@/hooks/useServiceEnabled'
 import PageHero from '@/components/common/PageHero'
 import QuantityStepper from '@/components/common/QuantityStepper'
-import { TextField, TextAreaField } from '@/components/common/FormField'
+import { DateField, TextField, TextAreaField } from '@/components/common/FormField'
 import { PickupLocationPicker } from '@/components/common/PickupLocationPicker'
 import { formatFulfillmentLabel } from '@/lib/fulfillment'
 import { formatPrice } from '@/lib/format'
@@ -40,10 +40,12 @@ import { useAddisNow } from '@/hooks/useAddisNow'
 import { useFormCopy, fillCopy } from '@/hooks/useFormCopy'
 import {
   addisDateError,
+  formatAddisDateInput,
   addisDateInputMin,
   addisTimeError,
   addisTimeInputMin,
 } from '@/lib/addisTime'
+import { formatEthiopianFieldValue } from '@/components/common/EthiopianDatePicker'
 
 const CATERING_CHIP_KEYS = [
   'chipNoSalt',
@@ -138,6 +140,7 @@ export default function CateringPage() {
   }, [selectedPackage, beverageOption])
 
   const totalPrice = pricePerGuest * guests
+  const ethiopianDate = formatAddisDateInput(date)
 
   const essentialsDone =
     guests >= CATERING_MIN_GUESTS &&
@@ -253,6 +256,7 @@ export default function CateringPage() {
       totalPrice,
       deliveryMethod,
       date,
+      dateDisplay: formatEthiopianFieldValue(date),
       time,
       location: location.trim(),
       pickupLocationId: deliveryMethod === 'pickup' ? pickupLocationId ?? undefined : undefined,
@@ -320,16 +324,14 @@ export default function CateringPage() {
                   )}
                 </div>
 
-                <TextField
+                <DateField
                   label={copy.eventDate}
                   name="date"
-                  type="date"
                   required
                   min={addisDateInputMin(addisNow)}
                   value={date}
                   error={errors.date}
-                  onChange={(e) => {
-                    const nextDate = e.target.value
+                  onChange={(nextDate) => {
                     setDate(nextDate)
                     if (time && addisTimeError(nextDate, time, addisNow)) setTime('')
                   }}
@@ -514,7 +516,7 @@ export default function CateringPage() {
                 step={6}
                 title={copy.fulfillmentTitle}
                 description={fillCopy(copy.fulfillmentMeta, {
-                  date: date || '—',
+                  date: ethiopianDate || '—',
                   place: location || '—',
                 })}
               >
@@ -646,7 +648,7 @@ export default function CateringPage() {
                     {deliveryMethod === 'pickup' && pickupLocationLabel ? (
                       <SummaryRow label={copy.pickupLocation} value={pickupLocationLabel} />
                     ) : null}
-                    <SummaryRow label={copy.summaryDate} value={date} />
+                    <SummaryRow label={copy.summaryDate} value={ethiopianDate || date} />
                     <SummaryRow label={copy.summaryTime} value={time} />
                     <SummaryRow label={copy.summaryPlace} value={location} />
                     <SummaryRow label={copy.summaryContact} value={`${name} · ${phone}`} />

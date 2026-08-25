@@ -422,6 +422,7 @@ publicRoutes.post("/requests", async (c) => {
   try {
     const { notifyNewRequest } = await import("../bot/notifications.js");
     await notifyNewRequest({
+      id: request.id,
       reference,
       customerName: input.customerName,
       phone: input.phone,

@@ -12,7 +12,6 @@ import {
   CircleHelp,
   Compass,
   PanelBottom,
-  UtensilsCrossed,
   Package,
   Send,
   Users,
@@ -66,7 +65,6 @@ const navigation: NavGroup[] = [
     items: [
       { to: '/navigation', label: 'Navigation', icon: Compass },
       { to: '/footer', label: 'Footer', icon: PanelBottom },
-      { to: '/menu-items', label: 'Menu Items', icon: UtensilsCrossed },
     ],
   },
   {

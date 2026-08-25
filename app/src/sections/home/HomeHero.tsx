@@ -4,24 +4,6 @@ import { useHomeSection } from '@/hooks/useHomeSection'
 import { useLanguage } from '@/hooks/useLanguage'
 import { resolveImageSrc } from '@/lib/image-url'
 
-const desktopIngredients = [
-  { emoji: '🌶️', left: '5%', top: '14%', delay: 0, size: 'text-3xl' },
-  { emoji: '🌾', left: '10%', top: '32%', delay: 0.4, size: 'text-3xl' },
-  { emoji: '🍯', left: '4%', top: '52%', delay: 0.8, size: 'text-2xl' },
-  { emoji: '🫛', left: '3%', top: '38%', delay: 1.2, size: 'text-3xl' },
-  { emoji: '🌶️', left: '92%', top: '16%', delay: 0.2, size: 'text-3xl' },
-  { emoji: '🌾', left: '87%', top: '34%', delay: 0.6, size: 'text-3xl' },
-  { emoji: '🐝', left: '94%', top: '54%', delay: 1, size: 'text-2xl' },
-  { emoji: '🫛', left: '85%', top: '72%', delay: 1.4, size: 'text-2xl' },
-]
-
-const mobileIngredients = [
-  { emoji: '🌶️', left: '4%', top: '22%', delay: 0, size: 'text-2xl' },
-  { emoji: '🌾', left: '0%', top: '32%', delay: 0.35, size: 'text-xl' },
-  { emoji: '🌶️', left: '88%', top: '20%', delay: 0.15, size: 'text-2xl' },
-  { emoji: '🐝', left: '92%', top: '30%', delay: 0.5, size: 'text-xl' },
-]
-
 const defaultProducts = [
   { src: '/images/tela-clean.webp', alt: 'House Tela served from a traditional clay pot' },
   { src: '/images/shiro-clean.webp', alt: 'Shiro pea powder' },
@@ -40,36 +22,6 @@ const WAVE_MOBILE_A =
   'M0,38 L160,38 C220,38 290,338 380,340 C470,342 540,48 720,42 C900,46 970,295 1090,298 C1210,301 1330,218 1440,210 L1440,400 L0,400 Z'
 const WAVE_MOBILE_B =
   'M0,32 L155,32 C215,32 285,332 375,334 C465,336 535,42 720,36 C905,40 965,288 1085,291 C1205,294 1325,212 1440,204 L1440,400 L0,400 Z'
-
-function FloatingIngredients({
-  items,
-  className,
-}: {
-  items: typeof desktopIngredients
-  className?: string
-}) {
-  return (
-    <>
-      {items.map((ing, i) => (
-        <motion.span
-          key={`${ing.emoji}-${ing.left}-${i}`}
-          className={`pointer-events-none absolute z-[15] opacity-80 ${ing.size} ${className ?? ''}`}
-          style={{ left: ing.left, top: ing.top }}
-          animate={{ y: [0, -14, 0], x: [0, 6, 0], rotate: [0, 10, -8, 0] }}
-          transition={{
-            duration: 5 + i * 0.35,
-            repeat: Infinity,
-            delay: ing.delay,
-            ease: 'easeInOut',
-          }}
-          aria-hidden
-        >
-          {ing.emoji}
-        </motion.span>
-      ))}
-    </>
-  )
-}
 
 function WaveSvg({
   className,
@@ -360,16 +312,12 @@ export default function HomeHero() {
 
   return (
     <section id="home" className="relative overflow-x-clip bg-burgundy">
-      <FloatingIngredients items={desktopIngredients} className="hidden sm:block" />
-
       {/* ── Mobile: FreshBox scene — headline top, focal product overlaps wave + headline ── */}
       <div className="relative min-h-mobile-hero overflow-hidden sm:hidden">
         <div
           className="pointer-events-none absolute inset-x-0 top-[14%] z-[5] h-[28%] bg-[radial-gradient(ellipse_at_center,rgba(231,197,106,0.12)_0%,transparent_70%)]"
           aria-hidden
         />
-
-        <FloatingIngredients items={mobileIngredients} />
 
         <Headline
           className="relative z-20 px-4 pb-2 pt-[4.75rem] text-center"

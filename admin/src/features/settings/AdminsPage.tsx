@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { formatAddisDateTime } from '@/lib/addisTime'
 
 type AdminRole = { id: string; name: string }
 
@@ -284,7 +285,7 @@ export function AdminsPage() {
                   </Button>
                   {admin.lastLoginAt ? (
                     <span className="text-[11px] text-brown/60">
-                      Last login {new Date(admin.lastLoginAt).toLocaleString()}
+                      Last login {formatAddisDateTime(admin.lastLoginAt)}
                     </span>
                   ) : (
                     <span className="text-[11px] text-brown/60">Never signed in</span>

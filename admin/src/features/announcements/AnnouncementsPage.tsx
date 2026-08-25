@@ -12,6 +12,10 @@ import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  addisDateTimeInputToIso,
+  toAddisDateTimeInputValue,
+} from '@/lib/addisTime'
 
 type Announcement = {
   id: string
@@ -29,8 +33,8 @@ function normalizeAnnouncement(row: Record<string, unknown>): Announcement {
     message: normalizeField(row.messageI18n ?? row.message),
     link: String(row.link || ''),
     active: row.active !== false,
-    startDate: row.startDate ? new Date(String(row.startDate)).toISOString().slice(0, 16) : '',
-    endDate: row.endDate ? new Date(String(row.endDate)).toISOString().slice(0, 16) : '',
+    startDate: toAddisDateTimeInputValue(typeof row.startDate === 'string' ? row.startDate : null),
+    endDate: toAddisDateTimeInputValue(typeof row.endDate === 'string' ? row.endDate : null),
     background: String(row.background || ''),
   }
 }
@@ -42,8 +46,8 @@ function announcementPayload(item: Announcement) {
     messageI18n,
     link: item.link || null,
     active: item.active,
-    startDate: item.startDate ? new Date(item.startDate).toISOString() : null,
-    endDate: item.endDate ? new Date(item.endDate).toISOString() : null,
+    startDate: addisDateTimeInputToIso(item.startDate),
+    endDate: addisDateTimeInputToIso(item.endDate),
     background: item.background || null,
   }
 }

@@ -7,6 +7,28 @@ import FoodVisual from '@/components/common/FoodVisual'
 import { useEnabledServices } from '@/hooks/useEnabledServices'
 import { useHomeSection } from '@/hooks/useHomeSection'
 
+type CtaVisual = {
+  name?: string
+  category?: string
+  image?: string
+}
+
+const defaultSide: { name: string; category: CategorySlug }[] = [
+  { name: 'Tibs', category: 'food' },
+  { name: 'House Tela', category: 'drinks' },
+]
+
+function resolveVisual(
+  visual: CtaVisual | undefined,
+  fallback: { name: string; category: CategorySlug },
+) {
+  return {
+    name: visual?.name?.trim() || fallback.name,
+    category: (visual?.category as CategorySlug) || fallback.category,
+    image: visual?.image?.trim() || undefined,
+  }
+}
+
 export default function HomeCTA() {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-100px' })
@@ -17,15 +39,17 @@ export default function HomeCTA() {
     primaryLink?: string
     secondaryText?: string
     secondaryLink?: string
+    left?: CtaVisual
+    right?: CtaVisual
   }>('cta')
 
   const { isHrefEnabled } = useEnabledServices()
   const secondaryLink = content?.secondaryLink ?? '/catering'
   const showCateringLink = isHrefEnabled(secondaryLink)
 
-  const side: { name: string; category: CategorySlug }[] = [
-    { name: 'Tibs', category: 'food' },
-    { name: 'House Tela', category: 'drinks' },
+  const side = [
+    resolveVisual(content?.left, defaultSide[0]),
+    resolveVisual(content?.right, defaultSide[1]),
   ]
 
   return (
@@ -47,7 +71,7 @@ export default function HomeCTA() {
             transition={{ duration: 0.6 }}
           >
             <div className="h-56 w-56 overflow-hidden rounded-[2rem] shadow-xl">
-              <FoodVisual {...side[0]} />
+              <FoodVisual name={side[0].name} category={side[0].category} image={side[0].image} />
             </div>
           </motion.div>
 
@@ -58,17 +82,11 @@ export default function HomeCTA() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <h2 className="heading-display text-3xl uppercase leading-tight text-burgundy sm:text-4xl lg:text-5xl">
-              {content?.title ?? (
-                <>
-                  Hungry for Something
-                  <br />
-                  Truly Ethiopian?
-                </>
-              )}
+              {content?.title ??
+                'Ready to taste healthy, fresh and tasty foods and traditional drinks'}
             </h2>
             <p className="mx-auto mt-4 max-w-md text-sm text-gray-800 sm:text-base">
-              {content?.description ??
-                'Order your favourites for delivery, or let us cater your next celebration. Either way, the clay pots are ready.'}
+              {content?.description ?? 'Visit us, book catering, or order drinks to go.'}
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <Link to={content?.primaryLink ?? '/shop'} className="btn-primary">
@@ -94,7 +112,7 @@ export default function HomeCTA() {
             transition={{ duration: 0.6, delay: 0.1 }}
           >
             <div className="h-56 w-56 overflow-hidden rounded-[2rem] shadow-xl">
-              <FoodVisual {...side[1]} />
+              <FoodVisual name={side[1].name} category={side[1].category} image={side[1].image} />
             </div>
           </motion.div>
         </div>

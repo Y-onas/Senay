@@ -1,15 +1,13 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { formatAddisDateTime } from '@/lib/addisTime'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
 export function formatDate(value: string | Date | null | undefined) {
-  if (!value) return '—'
-  const d = typeof value === 'string' ? new Date(value) : value
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleString()
+  return formatAddisDateTime(value)
 }
 
 export function readLocale(

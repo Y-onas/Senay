@@ -1,10 +1,18 @@
 /** All customer date/time selection is in Ethiopian local time. */
 export const ADDIS_TIME_ZONE = 'Africa/Addis_Ababa'
+const ETHIOPIAN_LOCALE = 'en-US-u-ca-ethiopic-nu-latn'
 
 export type AddisNow = {
   date: string
   time: string
 }
+
+const DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  timeZone: ADDIS_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
 
 function part(
   parts: Intl.DateTimeFormatPart[],
@@ -85,4 +93,59 @@ export function addisTimeError(
     return 'That time has already passed. Choose a later time.'
   }
   return null
+}
+
+export function formatAddisDate(
+  value: string | Date,
+  locale: string = ETHIOPIAN_LOCALE,
+): string {
+  const at = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(at.getTime())) return typeof value === 'string' ? value : ''
+  return at.toLocaleDateString(locale, {
+    timeZone: ADDIS_TIME_ZONE,
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+}
+
+export function getEthiopianYear(
+  at: Date = new Date(),
+  locale: string = ETHIOPIAN_LOCALE,
+): string {
+  const parts = new Intl.DateTimeFormat(locale, {
+    timeZone: ADDIS_TIME_ZONE,
+    year: 'numeric',
+  }).formatToParts(at)
+  return part(parts, 'year') || ''
+}
+
+/** Convert `YYYY-MM-DD` input values to Ethiopian calendar display. */
+export function formatAddisDateInput(dateIso: string): string {
+  if (!dateIso) return ''
+  const at = new Date(`${dateIso}T12:00:00+03:00`)
+  if (Number.isNaN(at.getTime())) return dateIso
+  return formatAddisDate(at)
+}
+
+export function formatAddisDateInputAmharic(dateIso: string): string {
+  if (!dateIso) return ''
+  const at = new Date(`${dateIso}T12:00:00+03:00`)
+  if (Number.isNaN(at.getTime())) return dateIso
+  return at.toLocaleDateString('am-ET-u-ca-ethiopic-nu-latn', {
+    timeZone: ADDIS_TIME_ZONE,
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+}
+
+export function toAddisDateInputValue(value: string | Date): string {
+  const at = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(at.getTime())) return ''
+  const parts = DATE_FORMATTER.formatToParts(at)
+  const year = part(parts, 'year')
+  const month = part(parts, 'month')
+  const day = part(parts, 'day')
+  return `${year}-${month}-${day}`
 }

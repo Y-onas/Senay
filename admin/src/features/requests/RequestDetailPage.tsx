@@ -76,18 +76,24 @@ function formatMoney(value: unknown, currency = 'ETB') {
 
 function formatShortDate(value: unknown) {
   if (!value) return '—'
-  const raw = String(value)
-  const dateOnly = /^\d{4}-\d{2}-\d{2}/.exec(raw)?.[0]
-  const d = dateOnly
-    ? new Date(`${dateOnly}T12:00:00+03:00`)
-    : new Date(raw)
+  const raw = String(value).trim()
+  // Already a customer-facing label (not Gregorian YYYY-MM-DD) — keep exact.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+  const d = new Date(`${raw}T12:00:00+03:00`)
   if (Number.isNaN(d.getTime())) return raw
-  return d.toLocaleDateString('en-GB', {
+  // Same Ethiopian calendar label the customer sees on the order form.
+  return d.toLocaleDateString('am-ET-u-ca-ethiopic-nu-latn', {
     timeZone: 'Africa/Addis_Ababa',
-    month: 'short',
-    day: 'numeric',
     year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   })
+}
+
+/** Preferred time must match what the customer typed — never re-zone or reformat. */
+function formatPreferredTime(value: unknown) {
+  if (value == null || value === '') return '—'
+  return String(value)
 }
 
 function relativeFromNow(value: unknown) {
@@ -268,8 +274,9 @@ export function RequestDetailPage() {
   const guests = str(payload.guests ?? request.guests, '—')
   const delivery = str(payload.deliveryMethod ?? request.deliveryMethod, '—')
   const location = str(payload.location ?? request.location, '—')
-  const preferredDate = payload.date ?? request.preferredDate
-  const preferredTime = str(payload.time ?? request.preferredTime, '—')
+  const preferredDate = payload.dateDisplay ?? payload.date ?? request.preferredDate
+  const preferredTime = formatPreferredTime(payload.time ?? request.preferredTime)
+  const preferredDateLabel = formatShortDate(preferredDate)
   const packageSummary = str(request.packageSummary ?? payload.packageId, '—')
   const totalAmount = request.totalAmount ?? payload.totalPrice
   const pricePerGuest = payload.pricePerGuest
@@ -395,7 +402,7 @@ export function RequestDetailPage() {
               icon={Calendar}
               tone="blue"
               label="Preferred Date"
-              value={formatShortDate(preferredDate)}
+              value={preferredDateLabel}
             />
             <QuickStat icon={Clock} tone="teal" label="Preferred Time" value={preferredTime} />
             <QuickStat
@@ -456,7 +463,7 @@ export function RequestDetailPage() {
                   <EventField icon={Coffee} tone="brown" label="Beverage Option" value={beverage} />
                   <EventField icon={Truck} tone="burgundy" label="Delivery Method" value={delivery} />
                   <EventField icon={MapPin} tone="blue" label="Location" value={location} />
-                  <EventField icon={Calendar} tone="sky" label="Date" value={formatShortDate(preferredDate)} />
+                  <EventField icon={Calendar} tone="sky" label="Date" value={preferredDateLabel} />
                   <EventField icon={Clock} tone="teal" label="Time" value={preferredTime} />
                   <EventField
                     icon={Users}

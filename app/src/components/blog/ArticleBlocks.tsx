@@ -5,6 +5,7 @@ import type { BlogBlock } from '@/types/blogBlocks'
 import { displayLocalized } from '@/types/blogBlocks'
 import { detectOrientation, type ImageOrientation } from '@/lib/imageOrientation'
 import { useLanguage } from '@/hooks/useLanguage'
+import VideoEmbed from '@/components/blog/VideoEmbed'
 
 function ArticleImage({
   url,
@@ -213,6 +214,23 @@ function BlockRenderer({
           layout={block.layout}
         />
       )
+    case 'video':
+      return (
+        <figure className="mx-auto w-full max-w-3xl">
+          <div className="overflow-hidden rounded-[1.75rem] border border-burgundy/10 bg-white shadow-[0_18px_50px_-28px_rgba(74,14,24,0.45)]">
+            <VideoEmbed
+              url={block.url}
+              platform={block.platform}
+              title={displayLocalized(block.caption, locale) || 'Embedded video'}
+            />
+          </div>
+          {displayLocalized(block.caption, locale) ? (
+            <figcaption className="mt-4 px-1 text-center text-sm leading-relaxed text-gray-500 sm:text-[0.95rem]">
+              {displayLocalized(block.caption, locale)}
+            </figcaption>
+          ) : null}
+        </figure>
+      )
     case 'gallery':
       return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
@@ -273,6 +291,7 @@ export default function ArticleBlocks({ blocks }: { blocks: BlogBlock[] }) {
       {blocks.map((block, index) => {
         const isVisual =
           block.type === 'image' ||
+          block.type === 'video' ||
           block.type === 'gallery' ||
           block.type === 'columns' ||
           block.type === 'quote' ||

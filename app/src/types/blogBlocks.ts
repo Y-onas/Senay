@@ -4,6 +4,7 @@ export type BlogBlockType =
   | 'quote'
   | 'list'
   | 'image'
+  | 'video'
   | 'gallery'
   | 'columns'
   | 'cta'
@@ -52,6 +53,13 @@ export interface ImageBlock extends BlogBlockBase {
   layout?: 'default' | 'wide' | 'full'
 }
 
+export interface VideoBlock extends BlogBlockBase {
+  type: 'video'
+  url: string
+  caption?: LocalizedString
+  platform?: 'youtube' | 'tiktok'
+}
+
 export interface GalleryBlock extends BlogBlockBase {
   type: 'gallery'
   images: BlogImageItem[]
@@ -79,6 +87,7 @@ export type BlogBlock =
   | QuoteBlock
   | ListBlock
   | ImageBlock
+  | VideoBlock
   | GalleryBlock
   | ColumnsBlock
   | CtaBlock

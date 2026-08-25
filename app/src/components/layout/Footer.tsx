@@ -7,6 +7,7 @@ import { footerDefaults, getFooter, type FooterContent } from '@/services/footer
 import { useContactContent } from '@/hooks/useContactContent'
 import { useEnabledServices } from '@/hooks/useEnabledServices'
 import { useLanguage } from '@/hooks/useLanguage'
+import { getEthiopianYear } from '@/lib/addisTime'
 
 function filterFooterContent(footer: FooterContent, isHrefEnabled: (href: string) => boolean): FooterContent {
   return {
@@ -133,7 +134,7 @@ export default function Footer() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 sm:flex-row">
           <p className="text-sm text-white/50">
-            &copy; {new Date().getFullYear()} {restaurant.name}. {t('footerAllRightsReserved')}
+            &copy; {getEthiopianYear()} {restaurant.name}. {t('footerAllRightsReserved')}
           </p>
           <p className="text-sm text-white/50">{visibleFooter.bottom.creditText}</p>
         </div>

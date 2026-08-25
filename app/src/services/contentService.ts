@@ -1,5 +1,6 @@
 import type { BlogPost, RestaurantInfo } from '@/types'
 import { normalizeBlocks } from '@/types/blogBlocks'
+import { formatAddisDate } from '@/lib/addisTime'
 import { apiRequest, USE_MOCK, mockResolve, unwrapData } from './apiClient'
 import { blogPosts } from '@/data/blog'
 import { restaurant } from '@/data/restaurant'
@@ -223,11 +224,7 @@ export async function getBlogPostsLive(): Promise<BlogPost[]> {
 function mapBlogPost(p: BlogPost & { publishedAt?: string }): BlogPost {
   const date =
     typeof p.publishedAt === 'string'
-      ? new Date(p.publishedAt).toLocaleDateString(undefined, {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })
+      ? formatAddisDate(p.publishedAt)
       : p.date
 
   return {
