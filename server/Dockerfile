@@ -46,7 +46,7 @@ WORKDIR /app
 ENV NODE_ENV=production \
     SERVE_WEB=1 \
     PORT=4000
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates curl && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/server/package.json /app/server/package-lock.json ./server/
 COPY --from=build /app/server/node_modules ./server/node_modules
 COPY --from=build /app/server/dist ./server/dist
