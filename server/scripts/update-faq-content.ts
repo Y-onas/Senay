@@ -10,8 +10,8 @@ const faqItems = [
       "በአዲስ አበባ ውስጥ ይላካሉ?",
     ),
     answer: lt(
-      "Yes. We deliver tela, tej and take-home products across Addis Ababa, with pickup also available from our restaurant in Bole.",
-      "አዎ። ተላ፣ ጠጅ እና ለማጸዳት ምርቶችን በአዲስ አበባ ውስጥ እናገልግላለን፣ ከቦሌ ያለው ሬስቶራንችን መጥተው ማምጣትም ይቻላል።",
+      "Yes. We deliver tela, tej and take-home products across Addis Ababa, with pickup also available from our Lebu, Figa and Jemo branches.",
+      "አዎ። ተላ፣ ጠጅ እና ለማጸዳት ምርቶችን በአዲስ አበባ ውስጥ እናገልግላለን፣ ከለቡ፣ ፊጋ እና ጀሞ ቅርንጫፎቻችን መጥተው ማምጣትም ይቻላል።",
     ),
   },
   {

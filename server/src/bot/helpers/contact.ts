@@ -5,17 +5,12 @@ import {
   normalizeLocale,
 } from "../../lib/i18nContent.js";
 import { escapeHtml, safeHttpUrl } from "./html.js";
-import { resolveI18n } from "./localize.js";
+import { getText, resolveI18n } from "./localize.js";
 import type { BotContext } from "../middleware/user.js";
 
 export type BotContactDetails = {
   phone?: string;
   email?: string;
-  address?: string;
-  mapUrl?: string;
-  latitude?: number;
-  longitude?: number;
-  social?: Record<string, string>;
 };
 
 export type BotLocationBranch = {
@@ -41,55 +36,75 @@ function stringValue(value: unknown, lang: string): string | undefined {
 }
 
 /**
- * Read the same dashboard-managed restaurant settings used by the site.
- * The legacy `contact` record remains a fallback for existing installations.
+ * Phone and email come from the Contact Us CMS (`page:contact`) — the same
+ * source as the website. Restaurant / legacy settings are fallbacks only.
+ * Do not use restaurant.address here: that was a leftover Bole pin that is
+ * not on the Contact Us page. Branches live under Locations / /location.
  */
 export async function getBotContactDetails(lang: string): Promise<BotContactDetails> {
-  const [restaurantSetting, legacySetting] = await Promise.all([
+  const [pageSetting, restaurantSetting, legacySetting] = await Promise.all([
+    prisma.siteSetting.findUnique({ where: { key: "page:contact" } }),
     prisma.siteSetting.findUnique({ where: { key: "restaurant" } }),
     prisma.siteSetting.findUnique({ where: { key: "contact" } }),
   ]);
 
+  const page = (pageSetting?.value && typeof pageSetting.value === "object"
+    ? pageSetting.value
+    : {}) as Record<string, unknown>;
   const restaurant = (restaurantSetting?.value && typeof restaurantSetting.value === "object"
     ? restaurantSetting.value
     : {}) as Record<string, unknown>;
   const legacy = (legacySetting?.value && typeof legacySetting.value === "object"
     ? legacySetting.value
     : {}) as Record<string, unknown>;
-  const value = (key: string) => stringValue(restaurant[key], lang) ?? stringValue(legacy[key], lang);
 
-  const latitude = Number(restaurant.latitude ?? legacy.latitude);
-  const longitude = Number(restaurant.longitude ?? legacy.longitude);
-  const socialSource = restaurant.social ?? legacy.social;
-  const social = socialSource && typeof socialSource === "object"
-    ? Object.fromEntries(
-      Object.entries(socialSource as Record<string, unknown>)
-        .map(([key, item]) => [key, stringValue(item, lang)])
-        .filter((entry): entry is [string, string] => Boolean(entry[1])),
-    )
-    : undefined;
+  const value = (key: string) =>
+    stringValue(page[key], lang)
+    ?? stringValue(restaurant[key], lang)
+    ?? stringValue(legacy[key], lang);
 
   return {
     phone: value("phone"),
     email: value("email"),
-    address: value("address"),
-    mapUrl: value("mapUrl"),
-    latitude: Number.isFinite(latitude) ? latitude : undefined,
-    longitude: Number.isFinite(longitude) ? longitude : undefined,
-    social,
   };
 }
 
-export function formatBotContact(details: BotContactDetails): string[] {
+export function formatBotContact(details: BotContactDetails, lang: string): string[] {
   const parts: string[] = [];
   if (details.phone) parts.push(`📞 ${details.phone}`);
   if (details.email) parts.push(`📧 ${details.email}`);
-  if (details.address) parts.push(`📍 ${details.address}`);
-  if (details.social?.telegram) parts.push(`💬 Telegram: ${details.social.telegram}`);
-  if (details.social?.instagram) parts.push(`📸 Instagram: ${details.social.instagram}`);
-  if (details.social?.facebook) parts.push(`👥 Facebook: ${details.social.facebook}`);
-  if (details.social?.tiktok) parts.push(`🎵 TikTok: ${details.social.tiktok}`);
+  parts.push(
+    lang === "am"
+      ? "📍 ቅርንጫፍ ቦታዎችን ለማየት /location ይጠቀሙ ወይም ከታች ያለውን ቁልፍ ይጫኑ።"
+      : "📍 For branch locations, use /location or tap Locations below.",
+  );
   return parts;
+}
+
+export function buildBotContactKeyboard(lang: string): InlineKeyboard {
+  return new InlineKeyboard()
+    .text(lang === "am" ? "📍 ቦታዎች" : "📍 Locations", "menu:location")
+    .row()
+    .text(lang === "am" ? "↩️ ተመለስ" : "↩️ Back", "menu:back:main");
+}
+
+export async function replyWithBotContact(ctx: BotContext, lang: string): Promise<void> {
+  const fallbackHeader = lang === "am" ? "📞 አግኙን" : "📞 Contact Us";
+  const headerRaw = await getText("contact_header", lang);
+  const header = headerRaw && headerRaw !== "contact_header" ? headerRaw : fallbackHeader;
+  const parts = formatBotContact(await getBotContactDetails(lang), lang);
+  const text = parts.length > 0 ? `${header}\n\n${parts.join("\n")}` : header;
+  const keyboard = buildBotContactKeyboard(lang);
+
+  try {
+    if (ctx.callbackQuery) {
+      await ctx.editMessageText(text, { reply_markup: keyboard, parse_mode: "HTML" });
+      return;
+    }
+  } catch {
+    // Fall through to a new message if the previous one cannot be edited.
+  }
+  await ctx.reply(text, { reply_markup: keyboard, parse_mode: "HTML" });
 }
 
 /**
@@ -179,7 +194,7 @@ export function buildBotLocationsKeyboard(
   return kb;
 }
 
-/** Send branch locations from Contact page CMS, with legacy single-pin fallback. */
+/** Send branch locations from the Contact Us page CMS. */
 export async function replyWithBotLocations(ctx: BotContext, lang: string): Promise<void> {
   const locations = await getBotLocations(lang);
   if (locations) {
@@ -200,20 +215,9 @@ export async function replyWithBotLocations(ctx: BotContext, lang: string): Prom
     return;
   }
 
-  const contact = await getBotContactDetails(lang);
-  if (contact.latitude !== undefined && contact.longitude !== undefined) {
-    await ctx.replyWithLocation(contact.latitude, contact.longitude);
-    return;
-  }
-  if (contact.mapUrl) {
-    await ctx.reply(`📍 ${contact.mapUrl}`);
-    return;
-  }
-  if (contact.address) {
-    await ctx.reply(`📍 ${contact.address}`);
-    return;
-  }
   await ctx.reply(
-    lang === "am" ? "📍 አድራሻ ገና አልተቀመጠም።" : "📍 Location not yet configured.",
+    lang === "am"
+      ? "📍 ቅርንጫፍ ቦታዎች ገና አልተቀመጡም። በ Contact Us ገጽ ላይ ይጨምሩ።"
+      : "📍 Branch locations are not configured yet. Add them on the Contact Us page.",
   );
 }

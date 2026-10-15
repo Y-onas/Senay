@@ -210,10 +210,16 @@ export function ContactPage() {
       const openingHoursEn = payload.openingHours
         .map((entry) => ({ day: entry.day.en, hours: entry.hours.en }))
         .filter((entry) => entry.day || entry.hours)
+      const restaurantAddress =
+        typeof restaurant.address === 'string' ? restaurant.address : ''
       await settingsApi.put('restaurant', {
         ...restaurant,
         phone: payload.phone,
         email: payload.email,
+        // Contact Us uses branch locations, not a single HQ pin. Drop leftover Bole.
+        ...(restaurantAddress.toLowerCase().includes('bole')
+          ? { address: '', mapUrl: '' }
+          : {}),
         openingHours: openingHoursEn.length ? openingHoursEn : restaurant.openingHours,
       })
 

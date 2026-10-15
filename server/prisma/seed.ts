@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import "dotenv/config";
 import {
   PrismaClient,
@@ -175,7 +177,7 @@ async function seedAdmin(roleId: string) {
     "";
   const emails = raw
     .split(",")
-    .map((e) => e.trim().toLowerCase())
+    .map((e: string) => e.trim().toLowerCase())
     .filter(Boolean);
 
   if (!emails.length) {
@@ -213,6 +215,7 @@ async function seedServices() {
     {
       slug: "catering",
       name: "Catering",
+      nameI18n: { en: "Catering", am: "ኬተሪንግ/ ቡፌ" },
       description: "Full-service Ethiopian catering for events of any size.",
       descriptionI18n: {
         en: "Full-service Ethiopian catering for events of any size.",
@@ -224,6 +227,7 @@ async function seedServices() {
     {
       slug: "baltina",
       name: "Baltina",
+      nameI18n: { en: "Baltina", am: "ባልትና" },
       description: "House-made spices, flours, and traditional pantry mixes.",
       descriptionI18n: {
         en: "House-made spices, flours, and traditional pantry mixes.",
@@ -235,6 +239,7 @@ async function seedServices() {
     {
       slug: "agelgil",
       name: "Agelgil",
+      nameI18n: { en: "Agelgil", am: "አገልግል" },
       description: "Traditional woven-basket meal sets for sharing.",
       descriptionI18n: {
         en: "Traditional woven-basket meal sets for sharing.",
@@ -246,6 +251,7 @@ async function seedServices() {
     {
       slug: "drinks",
       name: "Drinks",
+      nameI18n: { en: "Drinks", am: "መጠጦች" },
       description: "Clay-brewed tela and tej — house fermented.",
       descriptionI18n: {
         en: "Clay-brewed tela and tej — house fermented.",
@@ -257,6 +263,7 @@ async function seedServices() {
     {
       slug: "festival",
       name: "Festival",
+      nameI18n: { en: "Festival", am: "የበዓል ጥቅሎች" },
       description: "Celebration packages for holidays and gatherings.",
       descriptionI18n: {
         en: "Celebration packages for holidays and gatherings.",
@@ -274,8 +281,9 @@ async function seedServices() {
       create: s,
       update: {
         name: s.name,
+        nameI18n: s.nameI18n,
         description: s.description,
-        descriptionI18n: "descriptionI18n" in s ? s.descriptionI18n : undefined,
+        descriptionI18n: s.descriptionI18n,
         image: s.image,
         sortOrder: s.sortOrder,
       },
@@ -787,7 +795,7 @@ async function seedContent() {
     {
       question: "Do you deliver across Addis Ababa?",
       answer:
-        "Yes. We deliver tela, tej and take-home products across Addis Ababa, with pickup also available from our restaurant in Bole.",
+        "Yes. We deliver tela, tej and take-home products across Addis Ababa, with pickup also available from our Lebu, Figa and Jemo branches.",
     },
     {
       question: "How far in advance should I book catering?",
@@ -833,11 +841,10 @@ async function seedContent() {
       value: {
         name: "Senay Tela",
         tagline: "Authentic Ethiopian flavors, brewed and served with tradition.",
-        phone: "+251 91 234 5678",
-        email: "hello@senaytela.com",
-        address: "Bole Medhanialem, Addis Ababa, Ethiopia",
-        mapUrl:
-          "https://www.google.com/maps?q=Bole+Medhanialem+Addis+Ababa&output=embed",
+        phone: "+251 91 3917954 / +251978816181 / +251911910803 / +251911723850",
+        email: "senaytella@gmail.com",
+        address: "",
+        mapUrl: "",
         openingHours: [
           { day: "Monday – Thursday", hours: "11:00 AM – 10:00 PM" },
           { day: "Friday – Saturday", hours: "11:00 AM – 12:00 AM" },
@@ -1062,8 +1069,8 @@ async function seedContent() {
       description:
         "Questions, reservations or feedback — reach out and our team will get back to you.",
       formTitle: "Send a message",
-      phone: "+251 91 234 5678",
-      email: "hello@senaytela.com",
+      phone: "+251 91 3917954 / +251978816181 / +251911910803 / +251911723850",
+      email: "senaytella@gmail.com",
       hoursTitle: "Opening Hours",
       contactTitle: "Get in touch",
       openingHours: [

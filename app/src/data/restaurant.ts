@@ -5,11 +5,10 @@ export const CURRENCY = 'ETB'
 export const restaurant: RestaurantInfo = {
   name: 'Senay Tela',
   tagline: 'Authentic Ethiopian flavors, brewed and served with tradition.',
-  phone: '+251 91 234 5678',
-  email: 'hello@senaytela.com',
-  address: 'Bole Medhanialem, Addis Ababa, Ethiopia',
-  mapUrl:
-    'https://www.google.com/maps?q=Bole+Medhanialem+Addis+Ababa&output=embed',
+  phone: '+251 91 3917954 / +251978816181 / +251911910803 / +251911723850',
+  email: 'senaytella@gmail.com',
+  address: '',
+  mapUrl: '',
   openingHours: [
     { day: 'Monday – Thursday', hours: '11:00 AM – 10:00 PM' },
     { day: 'Friday – Saturday', hours: '11:00 AM – 12:00 AM' },

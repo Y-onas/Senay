@@ -8,7 +8,7 @@ import type { BotContext } from "../middleware/user.js";
 import { getText, resolveI18n } from "../helpers/localize.js";
 import { buildMenuKeyboard, buildServiceKeyboard, buildWebAppButton } from "../helpers/keyboard.js";
 import { buildWebAppUrl } from "../helpers/webapp-url.js";
-import { formatBotContact, getBotContactDetails, replyWithBotLocations } from "../helpers/contact.js";
+import { replyWithBotContact, replyWithBotLocations } from "../helpers/contact.js";
 
 /**
  * Handle all menu:* callback queries.
@@ -136,24 +136,7 @@ export async function handleMenuCallback(ctx: BotContext): Promise<void> {
     }
 
     case "contact": {
-      // Fetch contact info from site settings
-      const contactHeader = await getText("contact_header", lang);
-      const contactParts = formatBotContact(await getBotContactDetails(lang));
-      const contactText = contactParts.length > 0
-        ? `${contactHeader}\n\n${contactParts.join("\n")}`
-        : contactHeader;
-
-      const { InlineKeyboard: IK } = await import("grammy");
-      const backKb = new IK().text(
-        lang === "am" ? "↩️ ተመለስ" : "↩️ Back",
-        "menu:back:main",
-      );
-
-      try {
-        await ctx.editMessageText(contactText, { reply_markup: backKb, parse_mode: "HTML" });
-      } catch {
-        await ctx.reply(contactText, { reply_markup: backKb, parse_mode: "HTML" });
-      }
+      await replyWithBotContact(ctx, lang);
       break;
     }
 

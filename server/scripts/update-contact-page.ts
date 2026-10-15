@@ -11,8 +11,8 @@ const content = {
     "ጥያቄዎች፣ ቦታ ማስያዝ ወይም አስተያየት — ያግኙን እና ቡድናችን ይመለስልዎታል።",
   ),
   formTitle: lt("Send a message", "መልእክት ይላኩ"),
-  phone: "+251 91 234 5678",
-  email: "hello@senaytela.com",
+  phone: "+251 91 3917954 / +251978816181 / +251911910803 / +251911723850",
+  email: "senaytella@gmail.com",
   hoursTitle: lt("Opening Hours", "የመክፈቻ ሰዓቶች"),
   contactTitle: lt("Get in touch", "ያግኙን"),
   openingHours: [

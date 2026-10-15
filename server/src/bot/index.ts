@@ -49,16 +49,30 @@ async function startBot() {
 
   await bot.api.deleteWebhook();
 
-  await bot.api.setMyCommands([
+  const commandsEn = [
     { command: "start", description: "Main menu" },
     { command: "order", description: "Place an order" },
     { command: "language", description: "Change language" },
     { command: "contact", description: "Contact us" },
+    { command: "location", description: "Branch locations" },
     { command: "help", description: "Show help" },
     { command: "myid", description: "Show your Telegram chat ID" },
-  ]);
+  ];
+  const commandsAm = [
+    { command: "start", description: "ዋና ምናሌ" },
+    { command: "order", description: "ትዕዛዝ ያስገቡ" },
+    { command: "language", description: "ቋንቋ ቀይር" },
+    { command: "contact", description: "አግኙን" },
+    { command: "location", description: "ቦታዎች" },
+    { command: "help", description: "እርዳታ" },
+    { command: "myid", description: "የቴሌግራም መለያዎን አሳይ" },
+  ];
 
-  console.log("✅ Bot commands registered with Telegram");
+  await bot.api.setMyCommands(commandsEn);
+  await bot.api.setMyCommands(commandsEn, { language_code: "en" });
+  await bot.api.setMyCommands(commandsAm, { language_code: "am" });
+
+  console.log("✅ Bot commands registered with Telegram (en + am)");
   console.log("✅ Bot is running. Press Ctrl+C to stop.\n");
 
   bot.start({

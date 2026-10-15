@@ -37,7 +37,22 @@ export async function handleServiceCallback(ctx: BotContext): Promise<void> {
   }
 
   // Build service info message
-  const name = resolveI18n(service.name, service.nameI18n, lang);
+  const fallbackNames: Record<string, { en: string; am: string }> = {
+    baltina: { en: "Baltina", am: "ባልትና" },
+    drinks: { en: "Drinks", am: "መጠጦች" },
+    festival: { en: "Festival", am: "የበዓል ጥቅሎች" },
+    agelgil: { en: "Agelgil", am: "አገልግል" },
+    catering: { en: "Catering", am: "ኬተሪንግ/ ቡፌ" },
+  };
+  const locale = lang === "am" ? "am" : "en";
+  const fromI18n = resolveI18n(service.name, service.nameI18n, locale);
+  const fallback = fallbackNames[service.slug];
+  const name =
+    (locale === "am" && fallback && (!fromI18n || fromI18n === service.name)
+      ? fallback.am
+      : fromI18n) ||
+    fallback?.[locale] ||
+    service.name;
   const description = resolveI18n(service.description, service.descriptionI18n, lang);
 
   const infoText = `<b>${name}</b>\n\n${description}`;

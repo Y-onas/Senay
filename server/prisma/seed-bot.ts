@@ -103,10 +103,10 @@ async function seedBotMessages() {
     },
     {
       key: "help",
-      text: "📖 <b>Available Commands</b>\n\n/start — Main menu\n/order — Place an order\n/language — Change language\n/contact — Contact us\n/help — Show this help",
+      text: "📖 <b>Available Commands</b>\n\n/start — Main menu\n/order — Place an order\n/language — Change language\n/contact — Contact us\n/location — Branch locations\n/help — Show this help",
       textI18n: {
-        en: "📖 <b>Available Commands</b>\n\n/start — Main menu\n/order — Place an order\n/language — Change language\n/contact — Contact us\n/help — Show this help",
-        am: "📖 <b>የሚገኙ ትዕዛዞች</b>\n\n/start — ዋና ምናሌ\n/order — ትዕዛዝ ያስገቡ\n/language — ቋንቋ ቀይር\n/contact — አግኙን\n/help — እርዳታ",
+        en: "📖 <b>Available Commands</b>\n\n/start — Main menu\n/order — Place an order\n/language — Change language\n/contact — Contact us\n/location — Branch locations\n/help — Show this help",
+        am: "📖 <b>የሚገኙ ትዕዛዞች</b>\n\n/start — ዋና ምናሌ\n/order — ትዕዛዝ ያስገቡ\n/language — ቋንቋ ቀይር\n/contact — አግኙን\n/location — ቦታዎች\n/help — እርዳታ",
       },
     },
   ];

@@ -46,6 +46,14 @@ export async function buildMenuKeyboard(
 /**
  * Build inline keyboard from enabled services for the Order flow.
  */
+const SERVICE_NAME_FALLBACKS: Record<string, { en: string; am: string }> = {
+  baltina: { en: "Baltina", am: "ባልትና" },
+  drinks: { en: "Drinks", am: "መጠጦች" },
+  festival: { en: "Festival", am: "የበዓል ጥቅሎች" },
+  agelgil: { en: "Agelgil", am: "አገልግል" },
+  catering: { en: "Catering", am: "ኬተሪንግ/ ቡፌ" },
+};
+
 export async function buildServiceKeyboard(lang: string): Promise<InlineKeyboard> {
   const services = await prisma.service.findMany({
     where: { enabled: true },
@@ -53,9 +61,17 @@ export async function buildServiceKeyboard(lang: string): Promise<InlineKeyboard
   });
 
   const kb = new InlineKeyboard();
+  const locale = lang === "am" ? "am" : "en";
 
   for (const service of services) {
-    const name = resolveI18n(service.name, service.nameI18n, lang);
+    const fallback = SERVICE_NAME_FALLBACKS[service.slug];
+    const fromI18n = resolveI18n(service.name, service.nameI18n, locale);
+    const name =
+      (locale === "am" && fallback && (!fromI18n || fromI18n === service.name)
+        ? fallback.am
+        : fromI18n) ||
+      fallback?.[locale] ||
+      service.name;
     kb.text(name, `service:${service.slug}`).row();
   }
 

@@ -18,7 +18,7 @@ import { getText, resolveI18n } from "./helpers/localize.js";
 import { buildLanguageKeyboard, buildServiceKeyboard } from "./helpers/keyboard.js";
 import { prisma } from "../lib/prisma.js";
 import { buildWebAppUrl } from "./helpers/webapp-url.js";
-import { formatBotContact, getBotContactDetails, replyWithBotLocations } from "./helpers/contact.js";
+import { replyWithBotContact, replyWithBotLocations } from "./helpers/contact.js";
 import { getTelegramSettings, resolveWebAppBaseUrl } from "../lib/botConfig.js";
 
 export function registerBotHandlers(bot: Bot<BotContext>): void {
@@ -51,11 +51,11 @@ export function registerBotHandlers(bot: Bot<BotContext>): void {
   });
 
   bot.command("contact", async (ctx) => {
-    const lang = ctx.session.lang;
-    const contactHeader = await getText("contact_header", lang);
-    const parts = formatBotContact(await getBotContactDetails(lang));
-    const contactText = parts.length > 0 ? `${contactHeader}\n\n${parts.join("\n")}` : contactHeader;
-    await ctx.reply(contactText, { parse_mode: "HTML" });
+    await replyWithBotContact(ctx, ctx.session.lang);
+  });
+
+  bot.command("location", async (ctx) => {
+    await replyWithBotLocations(ctx, ctx.session.lang);
   });
 
   bot.command("help", async (ctx) => {
@@ -67,8 +67,8 @@ export function registerBotHandlers(bot: Bot<BotContext>): void {
     } else {
       const text =
         lang === "am"
-          ? `📖 <b>የሚገኙ ትዕዛዞች</b>\n\n/start — ዋና ምናሌ\n/order — ትዕዛዝ\n/language — ቋንቋ ቀይር\n/contact — አግኙን\n/help — እርዳታ`
-          : `📖 <b>Available Commands</b>\n\n/start — Main menu\n/order — Place an order\n/language — Change language\n/contact — Contact us\n/help — Show this help`;
+          ? `📖 <b>የሚገኙ ትዕዛዞች</b>\n\n/start — ዋና ምናሌ\n/order — ትዕዛዝ\n/language — ቋንቋ ቀይር\n/contact — አግኙን\n/location — ቦታዎች\n/help — እርዳታ`
+          : `📖 <b>Available Commands</b>\n\n/start — Main menu\n/order — Place an order\n/language — Change language\n/contact — Contact us\n/location — Branch locations\n/help — Show this help`;
       await ctx.reply(text, { parse_mode: "HTML" });
     }
   });
@@ -140,11 +140,7 @@ export function registerBotHandlers(bot: Bot<BotContext>): void {
           }
 
           case "contact": {
-            const contactHeader = await getText("contact_header", lang);
-            const parts = formatBotContact(await getBotContactDetails(lang));
-            const contactText =
-              parts.length > 0 ? `${contactHeader}\n\n${parts.join("\n")}` : contactHeader;
-            await ctx.reply(contactText, { parse_mode: "HTML" });
+            await replyWithBotContact(ctx, lang);
             return;
           }
 
