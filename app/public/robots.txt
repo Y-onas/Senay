@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /st-hq/
+Disallow: /api/admin/
+Disallow: /st-hq/api/
+
+Sitemap: https://senaycatering.com/sitemap.xml

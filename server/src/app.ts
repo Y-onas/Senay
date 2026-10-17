@@ -9,6 +9,7 @@ import { adminRoutes } from "./routes/admin.js";
 import { contactRoutes } from "./routes/contact.js";
 import { telegramRoutes } from "./routes/telegram.js";
 import { botAdminRoutes } from "./routes/bot-admin.js";
+import { sitemapHandler } from "./routes/sitemap.js";
 
 function allowedOrigins(): string[] {
   const fromEnv = (process.env.ALLOWED_ORIGINS || "")
@@ -56,6 +57,7 @@ export function createApp() {
   );
 
   app.get("/health", (c) => c.json({ ok: true, service: "senay-api" }));
+  app.get("/sitemap.xml", sitemapHandler);
   app.use("/uploads/*", serveStatic({ root: "./public" }));
 
   // Client-agnostic public API (website + Telegram)
