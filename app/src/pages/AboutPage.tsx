@@ -1,5 +1,4 @@
-import { Link } from 'react-router'
-import { ArrowUpRight, Coffee, Flame, HandHeart, Leaf } from 'lucide-react'
+import { Coffee, Flame, HandHeart, Leaf } from 'lucide-react'
 import PageHero from '@/components/common/PageHero'
 import ScrollReveal from '@/components/common/ScrollReveal'
 import FoodVisual from '@/components/common/FoodVisual'
@@ -69,10 +68,6 @@ export default function AboutPage() {
                   ))}
                 </div>
               ) : null}
-              <Link to="/menu" className="btn-primary mt-8">
-                {t('exploreMenu')}
-                <ArrowUpRight className="h-4 w-4" />
-              </Link>
             </ScrollReveal>
           </div>
         </section>
