@@ -1,7 +1,5 @@
 # Senay Tela
 
-Customer website + `/st-hq` admin + API + Telegram bot.
-
 ## Deploy
 
 See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for the full Railway checklist and env variables.
@@ -11,11 +9,11 @@ See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for the full Railway checklist and env 
 
 ## Local
 
-| Path | Role |
-|------|------|
-| `app/` | Website — local `app/.env` (Vite public vars) |
-| `server/` | API — local `server/.env` (secrets) |
-| `admin/` | Optional CMS source |
+| Path      | Role                                          |
+| --------- | --------------------------------------------- |
+| `app/`    | Website — local `app/.env` (Vite public vars) |
+| `server/` | API — local `server/.env` (secrets)           |
+| `admin/`  | Optional CMS source                           |
 
 ```bash
 # create app/.env and server/.env yourself (not committed)
