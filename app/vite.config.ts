@@ -4,7 +4,10 @@ import { defineConfig } from "vite"
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
+  // The customer site is served from the domain root. Using a relative base
+  // turns /about/favicon.ico into a request for /about/favicon.ico instead of
+  // the real /favicon.ico when a visitor or crawler opens a nested route.
+  base: '/',
   plugins: [react()],
   server: {
     port: 3000,

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -10,6 +10,7 @@ import { contactRoutes } from "./routes/contact.js";
 import { telegramRoutes } from "./routes/telegram.js";
 import { botAdminRoutes } from "./routes/bot-admin.js";
 import { sitemapHandler } from "./routes/sitemap.js";
+import { renderSeoHtml } from "./lib/site-seo.js";
 
 function allowedOrigins(): string[] {
   const fromEnv = (process.env.ALLOWED_ORIGINS || "")
@@ -101,6 +102,12 @@ export function createApp() {
       });
     }
 
+    const serveSeoIndex = (c: Context) => {
+      const indexHtml = path.join(siteRoot, "index.html");
+      if (!existsSync(indexHtml)) return c.notFound();
+      return c.html(renderSeoHtml(readFileSync(indexHtml, "utf-8"), new URL(c.req.url).pathname));
+    };
+
     app.use("/*", serveStatic({ root: siteRoot }));
 
     app.get("*", (c) => {
@@ -112,6 +119,13 @@ export function createApp() {
         url.pathname.startsWith("/st-hq/uploads") ||
         /^\/st-hq\/login\.(html|js|css)$/.test(url.pathname)
       ) {
+        return c.notFound();
+      }
+
+      // Do not turn a missing favicon, image, stylesheet, or script into a
+      // successful SPA HTML response. Asset consumers require the real file
+      // and correct Content-Type; a missing asset must be a 404.
+      if (path.extname(url.pathname)) {
         return c.notFound();
       }
 
@@ -128,9 +142,7 @@ export function createApp() {
         if (existsSync(stHqIndex)) return c.html(readFileSync(stHqIndex, "utf-8"));
       }
 
-      const indexHtml = path.join(siteRoot, "index.html");
-      if (existsSync(indexHtml)) return c.html(readFileSync(indexHtml, "utf-8"));
-      return c.notFound();
+      return serveSeoIndex(c);
     });
   }
 
